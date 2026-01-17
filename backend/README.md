@@ -13,6 +13,7 @@ npm run dev
 
 ### Endpoints
 
+- `GET /overshoot/config` (returns Overshoot config from env)
 - `POST /sessions/:sessionId/overshoot` (pickup event payload)
 - `POST /sessions/:sessionId/overshoot/result` (Overshoot SDK result payload)
 - `POST /webhooks/overshoot` `{ "session_id": "...", "event": { ...pickupEvent } }`
@@ -41,6 +42,24 @@ Body shape (example):
 
 If you already parse JSON on the client, send the object directly as `result`.
 
+### Overshoot Config
+
+Provide the Overshoot API details via env and fetch them from the client:
+
+```
+GET /overshoot/config
+```
+
+Response:
+
+```json
+{
+  "api_url": "https://cluster1.overshoot.ai/api/v0.2",
+  "api_key": "...",
+  "model": "...",
+  "prompt": "..."
+}
+```
 If you set LiveKit env vars, payloads are also published over LiveKit data channel to the room name matching `sessionId`:
 
 ```

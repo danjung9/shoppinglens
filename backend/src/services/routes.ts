@@ -22,6 +22,15 @@ export const buildRoutes = (orchestrator: AgentOrchestrator, overshoot: Overshoo
     res.json({ status: "ok" });
   });
 
+  router.get("/overshoot/config", (_req: Request, res: Response) => {
+    res.json({
+      api_url: process.env.OVERSHOOT_API_URL ?? "",
+      api_key: process.env.OVERSHOOT_API_KEY ?? "",
+      model: process.env.OVERSHOOT_MODEL ?? "",
+      prompt: process.env.OVERSHOOT_PROMPT ?? "",
+    });
+  });
+
   router.post("/sessions/:sessionId/overshoot", async (req: Request, res: Response) => {
     const { sessionId } = req.params;
     if (!isPickupEvent(req.body)) {

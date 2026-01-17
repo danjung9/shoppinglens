@@ -10,8 +10,14 @@ export type OvershootPickupOutput = {
   visual_description?: string;
 };
 
+type OvershootSdkResult = {
+  result: string;
+  inference_latency_ms?: number;
+  total_latency_ms?: number;
+};
+
 type OvershootRequestPayload = {
-  result: string | OvershootPickupOutput;
+  result: string | OvershootPickupOutput | OvershootSdkResult;
   frame_ref?: string;
 };
 
@@ -23,8 +29,22 @@ const coerceNumber = (value: unknown, fallback: number): number => {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 };
 
-const parseOutput = (payload: OvershootRequestPayload): OvershootPickupOutput | null => {
-  const raw = payload.result;
+const unwrapPayload = (payload: unknown): { result: unknown; frame_ref?: string } | null => {
+  if (!payload || typeof payload !== "object") return null;
+  const value = payload as Record<string, unknown>;
+  if ("result" in value) {
+    return {
+      result: value.result,
+      frame_ref: typeof value.frame_ref === "string" ? value.frame_ref : undefined,
+    };
+  }
+  return { result: payload };
+};
+
+const parseOutput = (payload: unknown): OvershootPickupOutput | null => {
+  const unwrapped = unwrapPayload(payload);
+  if (!unwrapped) return null;
+  const raw = unwrapped.result;
   if (typeof raw === "string") {
     try {
       return JSON.parse(raw) as OvershootPickupOutput;
@@ -33,7 +53,15 @@ const parseOutput = (payload: OvershootRequestPayload): OvershootPickupOutput | 
     }
   }
   if (raw && typeof raw === "object") {
-    return raw as OvershootPickupOutput;
+    const obj = raw as Record<string, unknown>;
+    if (typeof obj.result === "string") {
+      try {
+        return JSON.parse(obj.result) as OvershootPickupOutput;
+      } catch {
+        return null;
+      }
+    }
+    return obj as OvershootPickupOutput;
   }
   return null;
 };
@@ -46,7 +74,7 @@ export class OvershootBridge {
     private debounceMs: number,
   ) {}
 
-  handle(sessionId: string, payload: OvershootRequestPayload): EmitDecision {
+  handle(sessionId: string, payload: unknown): EmitDecision {
     const output = parseOutput(payload);
     if (!output) {
       return { shouldEmit: false, reason: "invalid_result" };
@@ -75,11 +103,15 @@ export class OvershootBridge {
       visual_description: output.visual_description,
     };
 
+    const frameRef = typeof (payload as OvershootRequestPayload)?.frame_ref === "string"
+      ? (payload as OvershootRequestPayload).frame_ref
+      : "overshoot://unknown";
+
     const event: PickupEvent = {
       event_id: randomUUID(),
       event_type: "PICKUP_DETECTED",
       confidence,
-      frame_ref: payload.frame_ref ?? "overshoot://unknown",
+      frame_ref: frameRef,
       search_seed: searchSeed,
     };
 
