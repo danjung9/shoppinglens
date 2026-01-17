@@ -11,6 +11,13 @@ npm install
 npm run dev
 ```
 
+### Live video test
+
+1) Fill `backend/.env` with Overshoot API values.
+2) Run the server.
+3) Open `http://localhost:8080/` in your browser.
+4) Click **Start Camera** and watch the live logs. (The test page loads the SDK from a CDN.)
+
 ### Endpoints
 
 - `GET /overshoot/config` (returns Overshoot config from env)

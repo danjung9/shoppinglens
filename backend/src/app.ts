@@ -1,5 +1,7 @@
 import express from "express";
 import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { buildRoutes } from "./services/routes.js";
 import { createStubTools } from "./tools/index.js";
 import { SessionStore } from "./state/sessionStore.js";
@@ -20,6 +22,9 @@ export const createApp = () => {
   const tools = createStubTools();
   const orchestrator = new AgentOrchestrator(store, streamHub, tools);
 
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  app.use(express.static(path.join(__dirname, "../public")));
   app.use("/", buildRoutes(orchestrator, overshootBridge));
 
   return { app, httpServer };

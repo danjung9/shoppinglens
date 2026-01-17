@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShoppingLens Overshoot Live Test</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+        background: #f6f4ef;
+        color: #1e1b16;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        display: grid;
+        gap: 24px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+      .card {
+        background: #fffaf0;
+        border: 1px solid #e0d7c8;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 6px 18px rgba(30, 27, 22, 0.08);
+      }
+      label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #7a6f61;
+      }
+      input, textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #d6c9b6;
+        background: #fffdf8;
+        font-size: 14px;
+      }
+      textarea {
+        min-height: 88px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #1f6f50;
+        color: #fff;
+      }
+      button.secondary {
+        background: #e7dfd2;
+        color: #3b332a;
+      }
+      .status {
+        font-size: 14px;
+        color: #3b332a;
+      }
+      pre {
+        background: #15110c;
+        color: #f7efe4;
+        padding: 16px;
+        border-radius: 12px;
+        overflow: auto;
+        max-height: 320px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #efe5d6;
+        font-size: 12px;
+        color: #4c4237;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div>
+          <h1>Overshoot Live Camera Test</h1>
+          <div class="pill">Backend: /overshoot/config</div>
+        </div>
+        <div class="status" id="status">Idle</div>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <div>
+            <label>Session ID</label>
+            <input id="sessionId" value="demo" />
+          </div>
+          <div>
+            <label>Camera Facing</label>
+            <input id="cameraFacing" value="environment" />
+          </div>
+          <div>
+            <label>Pickup Threshold</label>
+            <input id="threshold" value="0.6" />
+          </div>
+        </div>
+        <div style="height: 12px"></div>
+        <label>Prompt</label>
+        <textarea id="prompt">Detect when a person picks up or lifts a product. If pickup is detected, return pickup_detected=true and include visible_text, brand_hint, category_hint, and a short visual_description. If no pickup is detected in this window, return pickup_detected=false and leave other fields empty. Be conservative: only set pickup_detected=true when a hand clearly lifts or takes the item.</textarea>
+        <div style="height: 16px"></div>
+        <div class="actions">
+          <button class="primary" id="startBtn">Start Camera</button>
+          <button class="secondary" id="stopBtn" disabled>Stop</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <label>Live Output</label>
+        <pre id="log">Waiting for results...</pre>
+      </section>
+    </div>
+
+    <script type="module">
+      import { RealtimeVision } from "https://cdn.jsdelivr.net/npm/@overshoot/sdk/+esm";
+
+      const statusEl = document.getElementById("status");
+      const logEl = document.getElementById("log");
+      const startBtn = document.getElementById("startBtn");
+      const stopBtn = document.getElementById("stopBtn");
+      const sessionIdEl = document.getElementById("sessionId");
+      const cameraFacingEl = document.getElementById("cameraFacing");
+      const promptEl = document.getElementById("prompt");
+      const thresholdEl = document.getElementById("threshold");
+
+      let vision = null;
+      let overshootConfig = null;
+
+      const log = (message) => {
+        const timestamp = new Date().toISOString();
+        logEl.textContent = `[${timestamp}] ${message}\n` + logEl.textContent;
+      };
+
+      const loadConfig = async () => {
+        const res = await fetch("/overshoot/config");
+        if (!res.ok) throw new Error(`Failed to load config (${res.status})`);
+        overshootConfig = await res.json();
+        if (!overshootConfig.api_url || !overshootConfig.api_key) {
+          throw new Error("Missing Overshoot api_url or api_key in backend .env");
+        }
+      };
+
+      const sendResult = async (sessionId, result) => {
+        const res = await fetch(`/sessions/${sessionId}/overshoot/result`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ result })
+        });
+        if (!res.ok) {
+          log(`Backend rejected result: ${res.status}`);
+        }
+      };
+
+      const buildVision = () => {
+        return new RealtimeVision({
+          apiUrl: overshootConfig.api_url,
+          apiKey: overshootConfig.api_key,
+          model: overshootConfig.model || undefined,
+          prompt: promptEl.value,
+          source: { type: "camera", cameraFacing: cameraFacingEl.value || "environment" },
+          outputSchema: {
+            type: "object",
+            properties: {
+              pickup_detected: { type: "boolean" },
+              confidence: { type: "number" },
+              visible_text: { type: "array", items: { type: "string" } },
+              brand_hint: { type: "string" },
+              category_hint: { type: "string" },
+              visual_description: { type: "string" }
+            }
+          },
+          onResult: (result) => {
+            log(`Overshoot: ${result.result}`);
+            const sessionId = sessionIdEl.value.trim() || "demo";
+            sendResult(sessionId, result);
+          }
+        });
+      };
+
+      startBtn.addEventListener("click", async () => {
+        try {
+          statusEl.textContent = "Starting camera...";
+          startBtn.disabled = true;
+          await loadConfig();
+          vision = buildVision();
+          await vision.start();
+          const threshold = Number(thresholdEl.value);
+          if (!Number.isNaN(threshold)) {
+            await fetch(`/sessions/${sessionIdEl.value.trim() || "demo"}/overshoot/result`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ result: { pickup_detected: false, confidence: threshold - 0.01 } })
+            });
+          }
+          statusEl.textContent = "Live";
+          stopBtn.disabled = false;
+          log("Camera stream started.");
+        } catch (err) {
+          statusEl.textContent = "Error";
+          startBtn.disabled = false;
+          log(err.message || String(err));
+        }
+      });
+
+      stopBtn.addEventListener("click", async () => {
+        if (!vision) return;
+        await vision.stop();
+        vision = null;
+        statusEl.textContent = "Stopped";
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        log("Camera stream stopped.");
+      });
+    </script>
+  </body>
+</html>
