@@ -1,0 +1,24 @@
+import express from "express";
+import { createServer } from "node:http";
+import { buildRoutes } from "./services/routes.js";
+import { createStubTools } from "./tools/index.js";
+import { SessionStore } from "./state/sessionStore.js";
+import { AgentOrchestrator } from "./agent/orchestrator.js";
+import { StreamHub } from "./services/stream.js";
+import { createLiveKitPublisherFromEnv } from "./services/livekit.js";
+
+export const createApp = () => {
+  const app = express();
+  app.use(express.json({ limit: "2mb" }));
+
+  const httpServer = createServer(app);
+  const livekitPublisher = createLiveKitPublisherFromEnv();
+  const streamHub = new StreamHub(httpServer, livekitPublisher);
+  const store = new SessionStore();
+  const tools = createStubTools();
+  const orchestrator = new AgentOrchestrator(store, streamHub, tools);
+
+  app.use("/", buildRoutes(orchestrator));
+
+  return { app, httpServer };
+};
