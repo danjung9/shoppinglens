@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { AgentOrchestrator } from "../agent/orchestrator.js";
 import { PickupEvent } from "../types.js";
+import { OvershootBridge } from "./overshoot.js";
 
 const isPickupEvent = (body: unknown): body is PickupEvent => {
   if (!body || typeof body !== "object") return false;
@@ -14,7 +15,7 @@ const isPickupEvent = (body: unknown): body is PickupEvent => {
   );
 };
 
-export const buildRoutes = (orchestrator: AgentOrchestrator): Router => {
+export const buildRoutes = (orchestrator: AgentOrchestrator, overshoot: OvershootBridge): Router => {
   const router = Router();
 
   router.get("/health", (_req: Request, res: Response) => {
@@ -29,6 +30,18 @@ export const buildRoutes = (orchestrator: AgentOrchestrator): Router => {
     }
 
     await orchestrator.handlePickup(sessionId, req.body);
+    res.json({ status: "accepted" });
+  });
+
+  router.post("/sessions/:sessionId/overshoot/result", async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+    const decision = overshoot.handle(sessionId, req.body);
+    if (!decision.shouldEmit) {
+      res.json({ status: "ignored", reason: decision.reason });
+      return;
+    }
+
+    await orchestrator.handlePickup(sessionId, decision.event);
     res.json({ status: "accepted" });
   });
 
