@@ -22,7 +22,7 @@ type OvershootRequestPayload = {
 };
 
 type EmitDecision =
-  | { shouldEmit: true; event: PickupEvent }
+  | { shouldEmit: true; event: PickupEvent; output: OvershootPickupOutput }
   | { shouldEmit: false; reason: string };
 
 const coerceNumber = (value: unknown, fallback: number): number => {
@@ -84,8 +84,12 @@ export class OvershootBridge {
       return { shouldEmit: false, reason: "pickup_not_detected" };
     }
 
-    const confidence = coerceNumber(output.confidence, 0);
-    if (confidence < this.threshold) {
+    const confidenceValue =
+      typeof output.confidence === "number" && Number.isFinite(output.confidence)
+        ? output.confidence
+        : undefined;
+    const confidence = confidenceValue ?? 1;
+    if (confidenceValue !== undefined && confidence < this.threshold) {
       return { shouldEmit: false, reason: "low_confidence" };
     }
 
@@ -115,7 +119,7 @@ export class OvershootBridge {
       search_seed: searchSeed,
     };
 
-    return { shouldEmit: true, event };
+    return { shouldEmit: true, event, output };
   }
 }
 

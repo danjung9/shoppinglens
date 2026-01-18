@@ -125,6 +125,11 @@
       </section>
 
       <section class="card">
+        <label>Agent Audio</label>
+        <audio id="agentAudio" controls autoplay playsinline></audio>
+      </section>
+
+      <section class="card">
         <label>Log</label>
         <pre id="log">Waiting...</pre>
       </section>
@@ -143,6 +148,7 @@
       const joinBtn = document.getElementById("joinBtn");
       const leaveBtn = document.getElementById("leaveBtn");
       const pickupBtn = document.getElementById("pickupBtn");
+      const agentAudioEl = document.getElementById("agentAudio");
 
       let room = null;
       let agentIdentity = null;
@@ -231,6 +237,26 @@
           if (!text) return;
           appendTranscript(`${participant.identity}: ${text}`);
         });
+        room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+          if (!participant) return;
+          const isAgent = participant.kind === ParticipantKind.AGENT ||
+            (agentIdentity && participant.identity === agentIdentity);
+          if (!isAgent || track.kind !== "audio") return;
+          track.attach(agentAudioEl);
+          const playPromise = agentAudioEl.play();
+          if (playPromise) {
+            playPromise.catch(() => {
+              log("Agent audio blocked by autoplay policy. Click Join + Mic or the audio controls.");
+            });
+          }
+        });
+        room.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+          if (!participant) return;
+          const isAgent = participant.kind === ParticipantKind.AGENT ||
+            (agentIdentity && participant.identity === agentIdentity);
+          if (!isAgent || track.kind !== "audio") return;
+          track.detach(agentAudioEl);
+        });
 
         await room.connect(url, token);
         await room.localParticipant.setMicrophoneEnabled(true);
@@ -244,6 +270,7 @@
         if (!room) return;
         await room.disconnect();
         room = null;
+        agentAudioEl.srcObject = null;
         joinBtn.disabled = false;
         leaveBtn.disabled = true;
         setStatus("Idle");

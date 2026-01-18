@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { AccessToken } from "livekit-server-sdk";
 import { AgentOrchestrator } from "../agent/orchestrator.js";
 import { PickupEvent } from "../types.js";
-import { OvershootBridge } from "./overshoot.js";
+import { OvershootBridge, OvershootPickupOutput } from "./overshoot.js";
 import { LiveKitQuestionListener } from "./livekitQuestions.js";
 import { LiveKitAgentDispatcher } from "./livekitAgentDispatch.js";
 import { LiveKitSessionManager } from "./livekitSession.js";
@@ -33,9 +33,20 @@ export const buildRoutes = (
       console.warn("LiveKit listener failed:", error);
     });
   };
-  const ensureAgentDispatch = (sessionId: string, event?: PickupEvent) => {
+  const ensureAgentDispatch = (
+    sessionId: string,
+    event?: PickupEvent,
+    output?: OvershootPickupOutput,
+  ) => {
     if (!livekitDispatcher) return;
-    const metadata = event ? JSON.stringify({ search_seed: event.search_seed }) : undefined;
+    const metadata = event
+      ? JSON.stringify({
+          search_seed: event.search_seed,
+          confidence: event.confidence,
+          frame_ref: event.frame_ref,
+          overshoot_output: output,
+        })
+      : undefined;
     void livekitDispatcher
       .dispatch(sessionId, metadata)
       .then((dispatched) => {
@@ -90,7 +101,7 @@ export const buildRoutes = (
     }
 
     ensureLiveKit(sessionId);
-    ensureAgentDispatch(sessionId, decision.event);
+    ensureAgentDispatch(sessionId, decision.event, decision.output);
     await orchestrator.handlePickup(sessionId, decision.event);
     res.json({ status: "accepted" });
   });

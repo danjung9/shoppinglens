@@ -40,6 +40,16 @@ const listenerIdentityPrefix = process.env.LIVEKIT_LISTENER_IDENTITY_PREFIX ?? "
 
 type JobMetadata = {
   search_seed?: SearchSeed;
+  confidence?: number;
+  frame_ref?: string;
+  overshoot_output?: {
+    pickup_detected?: boolean;
+    confidence?: number;
+    visible_text?: string[];
+    brand_hint?: string;
+    category_hint?: string;
+    visual_description?: string;
+  };
 };
 
 const parseJobMetadata = (value?: string): JobMetadata | undefined => {
@@ -127,6 +137,10 @@ export default defineAgent({
     const metadata = parseJobMetadata(ctx.info.acceptArguments?.metadata);
     const seedSummary = metadata?.search_seed ? formatSearchSeed(metadata.search_seed) : undefined;
     const seedPrompt = seedSummary ? buildSeedPrompt(seedSummary) : undefined;
+    const overshootJson = metadata?.overshoot_output ? JSON.stringify(metadata.overshoot_output) : undefined;
+    const pickupPrompt = [seedPrompt, overshootJson ? `Raw pickup JSON: ${overshootJson}` : undefined]
+      .filter(Boolean)
+      .join(" ");
     const agentInstructions = seedSummary ? `${instructions} Pickup context: ${seedSummary}.` : instructions;
     let sawUser = false;
     let shuttingDown = false;
@@ -185,8 +199,8 @@ export default defineAgent({
     await ctx.connect();
     sawUser = hasActiveUser(ctx.room) || sawUser;
 
-    if (seedPrompt) {
-      session.generateReply({ userInput: seedPrompt });
+    if (pickupPrompt) {
+      session.generateReply({ userInput: pickupPrompt });
     } else if (greeting) {
       session.say(greeting);
     }

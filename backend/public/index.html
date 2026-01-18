@@ -103,13 +103,21 @@
         font-size: 12px;
         color: #4c4237;
       }
+      video.preview {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid #e0d7c8;
+        background: #1b1813;
+        max-height: 360px;
+        object-fit: cover;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <header>
         <div>
-          <h1>Overshoot Live Camera Test</h1>
+          <h1>Overshoot + LiveKit Pipeline Test</h1>
           <div class="pill">Backend: /overshoot/config</div>
         </div>
         <div class="status" id="status">Idle</div>
@@ -138,6 +146,53 @@
           <button class="primary" id="startBtn">Start Camera</button>
           <button class="secondary" id="stopBtn" disabled>Stop</button>
         </div>
+        <div style="height: 16px"></div>
+        <label>Camera Preview</label>
+        <div style="height: 8px"></div>
+        <video id="cameraPreview" class="preview" autoplay playsinline muted></video>
+      </section>
+
+      <section class="card">
+        <div class="row">
+          <div>
+            <label>LiveKit URL</label>
+            <input id="livekitUrl" placeholder="wss://your-project.livekit.cloud" />
+          </div>
+          <div>
+            <label>Identity</label>
+            <input id="identity" />
+          </div>
+          <div>
+            <label>Name</label>
+            <input id="name" value="Tester" />
+          </div>
+        </div>
+        <div style="height: 12px"></div>
+        <div class="row">
+          <div>
+            <label>LiveKit Status</label>
+            <div class="status" id="livekitStatus">Disconnected</div>
+          </div>
+          <div>
+            <label>Auto-Join on Pickup</label>
+            <input id="autoJoin" type="checkbox" checked />
+          </div>
+        </div>
+        <div style="height: 16px"></div>
+        <div class="actions">
+          <button class="primary" id="joinBtn">Join + Mic</button>
+          <button class="secondary" id="leaveBtn" disabled>Leave</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <label>Agent Transcript</label>
+        <pre id="agentTranscript">Waiting...</pre>
+      </section>
+
+      <section class="card">
+        <label>Agent Audio</label>
+        <audio id="agentAudio" controls autoplay playsinline></audio>
       </section>
 
       <section class="card">
@@ -148,6 +203,7 @@
 
     <script type="module">
       import { RealtimeVision } from "https://cdn.jsdelivr.net/npm/@overshoot/sdk/+esm";
+      import { Room, RoomEvent, ParticipantKind } from "https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.esm.mjs";
 
       const statusEl = document.getElementById("status");
       const logEl = document.getElementById("log");
@@ -157,13 +213,33 @@
       const cameraFacingEl = document.getElementById("cameraFacing");
       const promptEl = document.getElementById("prompt");
       const thresholdEl = document.getElementById("threshold");
+      const previewEl = document.getElementById("cameraPreview");
+      const livekitUrlEl = document.getElementById("livekitUrl");
+      const identityEl = document.getElementById("identity");
+      const nameEl = document.getElementById("name");
+      const joinBtn = document.getElementById("joinBtn");
+      const leaveBtn = document.getElementById("leaveBtn");
+      const livekitStatusEl = document.getElementById("livekitStatus");
+      const autoJoinEl = document.getElementById("autoJoin");
+      const transcriptEl = document.getElementById("agentTranscript");
+      const agentAudioEl = document.getElementById("agentAudio");
 
       let vision = null;
       let overshootConfig = null;
+      let livekitConfig = null;
+      let room = null;
+      let agentIdentity = null;
+      let pickupTriggered = false;
+      let previewStream = null;
 
       const log = (message) => {
         const timestamp = new Date().toISOString();
         logEl.textContent = `[${timestamp}] ${message}\n` + logEl.textContent;
+      };
+
+      const appendTranscript = (message) => {
+        const timestamp = new Date().toISOString();
+        transcriptEl.textContent = `[${timestamp}] ${message}\n` + transcriptEl.textContent;
       };
 
       const loadConfig = async () => {
@@ -175,14 +251,147 @@
         }
       };
 
+      const loadLiveKitConfig = async () => {
+        const res = await fetch("/livekit/config");
+        if (!res.ok) return;
+        livekitConfig = await res.json();
+        if (livekitConfig.host) {
+          livekitUrlEl.value = livekitConfig.host;
+        }
+        if (livekitConfig.agent_name) {
+          agentIdentity = livekitConfig.agent_name;
+        }
+      };
+
+      const ensureIdentity = () => {
+        if (identityEl.value.trim()) return;
+        identityEl.value = `tester-${Math.random().toString(36).slice(2, 8)}`;
+      };
+
+      const fetchToken = async () => {
+        const roomName = sessionIdEl.value.trim() || "demo";
+        const res = await fetch("/livekit/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room: roomName,
+            identity: identityEl.value.trim(),
+            name: nameEl.value.trim(),
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Token request failed (${res.status})`);
+        }
+        const data = await res.json();
+        return data.token;
+      };
+
+      const setLiveKitStatus = (message) => {
+        livekitStatusEl.textContent = message;
+      };
+
+      const connectRoom = async () => {
+        if (room) return;
+        ensureIdentity();
+        const url = livekitUrlEl.value.trim();
+        if (!url) {
+          throw new Error("LiveKit URL is required.");
+        }
+        setLiveKitStatus("Connecting...");
+        const token = await fetchToken();
+        room = new Room();
+
+        room.on(RoomEvent.ParticipantConnected, (participant) => {
+          log(`Participant joined: ${participant.identity}`);
+        });
+        room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+          log(`Participant left: ${participant.identity}`);
+        });
+        room.on(RoomEvent.ConnectionStateChanged, (state) => {
+          log(`Room state: ${state}`);
+        });
+        room.on(RoomEvent.TranscriptionReceived, (segments, participant) => {
+          if (!participant) return;
+          const isAgent = participant.kind === ParticipantKind.AGENT ||
+            (agentIdentity && participant.identity === agentIdentity);
+          if (!isAgent) return;
+          const text = segments.map((segment) => segment.text).join("").trim();
+          if (!text) return;
+          appendTranscript(`${participant.identity}: ${text}`);
+        });
+        room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+          if (!participant) return;
+          const isAgent = participant.kind === ParticipantKind.AGENT ||
+            (agentIdentity && participant.identity === agentIdentity);
+          if (!isAgent || track.kind !== "audio") return;
+          track.attach(agentAudioEl);
+          const playPromise = agentAudioEl.play();
+          if (playPromise) {
+            playPromise.catch(() => {
+              log("Agent audio blocked by autoplay policy. Click Join + Mic or the audio controls.");
+            });
+          }
+        });
+        room.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
+          if (!participant) return;
+          const isAgent = participant.kind === ParticipantKind.AGENT ||
+            (agentIdentity && participant.identity === agentIdentity);
+          if (!isAgent || track.kind !== "audio") return;
+          track.detach(agentAudioEl);
+        });
+
+        await room.connect(url, token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+        joinBtn.disabled = true;
+        leaveBtn.disabled = false;
+        setLiveKitStatus(`Connected to ${sessionIdEl.value.trim() || "demo"}`);
+        log("Microphone enabled.");
+      };
+
+      const leaveRoom = async () => {
+        if (!room) return;
+        await room.disconnect();
+        room = null;
+        agentAudioEl.srcObject = null;
+        joinBtn.disabled = false;
+        leaveBtn.disabled = true;
+        setLiveKitStatus("Disconnected");
+      };
+
+      const parsePickupResult = (payload) => {
+        if (!payload) return null;
+        const unwrapped = payload.result ?? payload;
+        if (typeof unwrapped === "string") {
+          try {
+            return JSON.parse(unwrapped);
+          } catch {
+            return null;
+          }
+        }
+        if (typeof unwrapped === "object" && unwrapped && typeof unwrapped.result === "string") {
+          try {
+            return JSON.parse(unwrapped.result);
+          } catch {
+            return null;
+          }
+        }
+        return unwrapped;
+      };
+
       const sendResult = async (sessionId, result) => {
         const res = await fetch(`/sessions/${sessionId}/overshoot/result`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ result })
         });
+        const data = await res.json().catch(() => null);
         if (!res.ok) {
           log(`Backend rejected result: ${res.status}`);
+          return;
+        }
+        if (data?.status && data.status !== "accepted") {
+          log(`Backend ignored result: ${data.reason || data.status}`);
         }
       };
 
@@ -208,17 +417,59 @@
             log(`Overshoot: ${result.result}`);
             const sessionId = sessionIdEl.value.trim() || "demo";
             sendResult(sessionId, result);
+            const parsed = parsePickupResult(result);
+            if (parsed?.pickup_detected && !pickupTriggered) {
+              pickupTriggered = true;
+              log("Pickup detected. Prompting LiveKit agent.");
+              if (autoJoinEl.checked) {
+                connectRoom().catch((err) => log(`LiveKit join failed: ${err.message}`));
+              }
+            }
           }
         });
+      };
+
+      const startPreview = async () => {
+        if (previewStream) return;
+        const facingMode = cameraFacingEl.value || "environment";
+        previewStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode },
+          audio: false
+        });
+        previewEl.srcObject = previewStream;
+        const playPromise = previewEl.play();
+        if (playPromise) {
+          playPromise.catch(() => {
+            // ignore autoplay failures for muted preview
+          });
+        }
+      };
+
+      const stopPreview = () => {
+        if (!previewStream) return;
+        for (const track of previewStream.getTracks()) {
+          track.stop();
+        }
+        previewStream = null;
+        previewEl.srcObject = null;
+      };
+
+      const startVision = async () => {
+        vision = buildVision();
+        await vision.start();
       };
 
       startBtn.addEventListener("click", async () => {
         try {
           statusEl.textContent = "Starting camera...";
           startBtn.disabled = true;
+          pickupTriggered = false;
           await loadConfig();
-          vision = buildVision();
-          await vision.start();
+          await loadLiveKitConfig();
+          ensureIdentity();
+          await startPreview();
+          await startVision();
+          connectRoom().catch((err) => log(`LiveKit join failed: ${err.message}`));
           const threshold = Number(thresholdEl.value);
           if (!Number.isNaN(threshold)) {
             await fetch(`/sessions/${sessionIdEl.value.trim() || "demo"}/overshoot/result`, {
@@ -244,8 +495,30 @@
         statusEl.textContent = "Stopped";
         startBtn.disabled = false;
         stopBtn.disabled = true;
+        pickupTriggered = false;
+        stopPreview();
         log("Camera stream stopped.");
       });
+
+      joinBtn.addEventListener("click", () => {
+        connectRoom().catch((err) => log(`LiveKit join failed: ${err.message}`));
+      });
+
+      leaveBtn.addEventListener("click", () => {
+        leaveRoom().catch((err) => log(`LiveKit leave failed: ${err.message}`));
+      });
+
+      const autoStart = async () => {
+        try {
+          startBtn.click();
+        } catch (err) {
+          log(`Auto-start failed: ${err.message || String(err)}`);
+        }
+      };
+
+      loadLiveKitConfig();
+      ensureIdentity();
+      window.addEventListener("load", autoStart);
     </script>
   </body>
 </html>
