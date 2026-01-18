@@ -15,26 +15,78 @@ const makeSpecs = (query: string): ProductSpec[] => [
   { key: "Query", value: query },
 ];
 
+type GeminiSearchChunk = {
+  web?: {
+    uri?: string;
+    title?: string;
+  };
+};
+
+const runGeminiSearch = async (query: string): Promise<SearchResult[]> => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return [];
+  }
+
+  const model = process.env.GEMINI_MODEL || process.env.gemini_model || "gemini-1.5-flash";
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `Search the web for: ${query}. Return sources with titles and URLs.`,
+              },
+            ],
+          },
+        ],
+        tools: [{ google_search: {} }],
+        generationConfig: {
+          temperature: 0.2,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    const chunks: GeminiSearchChunk[] =
+      data?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+
+    const results = chunks
+      .map((chunk: GeminiSearchChunk) => {
+        const url = chunk.web?.uri;
+        const title = chunk.web?.title ?? url;
+        if (!url || !title) return null;
+        return { title, url } satisfies SearchResult;
+      })
+      .filter((item: SearchResult | null): item is SearchResult => Boolean(item));
+
+    return results;
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 export const createStubTools = (): Toolset => {
   return {
     async searchWeb(query: string) {
-      return [
-        {
-          title: `Top result for ${query}`,
-          url: `https://example.com/products/${encodeURIComponent(query)}`,
-          snippet: "Mock search result for hackathon wiring.",
-        },
-        {
-          title: `Alternative ${query} bundle`,
-          url: `https://example.com/alt/${encodeURIComponent(query)}`,
-          snippet: "Mock alternative listing.",
-        },
-        {
-          title: `Comparable ${query} choice`,
-          url: `https://example.com/compare/${encodeURIComponent(query)}`,
-          snippet: "Mock comparison page.",
-        },
-      ];
+      return runGeminiSearch(query);
     },
 
     async fetchPage(url: string) {

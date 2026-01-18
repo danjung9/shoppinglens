@@ -1,0 +1,472 @@
+0 verbose cli /opt/homebrew/Cellar/node/24.2.0/bin/node /opt/homebrew/bin/npm
+1 info using npm@11.3.0
+2 info using node@v24.2.0
+3 silly config load:file:/opt/homebrew/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/khoadangnguyen/Desktop/shoppinglens/backend/.npmrc
+5 silly config load:file:/Users/khoadangnguyen/.npmrc
+6 silly config load:file:/opt/homebrew/etc/npmrc
+7 verbose title npm install @langchain/core@latest @langchain/google-genai@latest @langchain/langgraph@latest
+8 verbose argv "install" "@langchain/core@latest" "@langchain/google-genai@latest" "@langchain/langgraph@latest" "--cache" "/Users/khoadangnguyen/Desktop/shoppinglens/.npm-cache"
+9 verbose logfile logs-max:10 dir:/Users/khoadangnguyen/Desktop/shoppinglens/.npm-cache/_logs/2026-01-18T00_31_06_538Z-
+10 verbose logfile /Users/khoadangnguyen/Desktop/shoppinglens/.npm-cache/_logs/2026-01-18T00_31_06_538Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 silly packumentCache corgi:https://registry.npmjs.org/@langchain%2fcore cache-miss
+14 silly packumentCache corgi:https://registry.npmjs.org/@langchain%2fgoogle-genai cache-miss
+15 silly packumentCache corgi:https://registry.npmjs.org/@langchain%2flanggraph cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/@langchain%2flanggraph 173ms (cache miss)
+17 silly packumentCache corgi:https://registry.npmjs.org/@langchain%2flanggraph set size:undefined disposed:false
+18 http fetch GET 200 https://registry.npmjs.org/@langchain%2fgoogle-genai 200ms (cache miss)
+19 silly packumentCache corgi:https://registry.npmjs.org/@langchain%2fgoogle-genai set size:undefined disposed:false
+20 http fetch GET 200 https://registry.npmjs.org/@langchain%2fcore 273ms (cache miss)
+21 silly packumentCache corgi:https://registry.npmjs.org/@langchain%2fcore set size:undefined disposed:false
+22 silly idealTree buildDeps
+23 silly fetch manifest @langchain/core@1.1.15
+24 silly packumentCache full:https://registry.npmjs.org/@langchain%2fcore cache-miss
+25 http fetch GET 200 https://registry.npmjs.org/@langchain%2fcore 94ms (cache miss)
+26 silly packumentCache full:https://registry.npmjs.org/@langchain%2fcore set size:undefined disposed:false
+27 silly fetch manifest @langchain/google-genai@2.1.10
+28 silly packumentCache full:https://registry.npmjs.org/@langchain%2fgoogle-genai cache-miss
+29 http fetch GET 200 https://registry.npmjs.org/@langchain%2fgoogle-genai 77ms (cache miss)
+30 silly packumentCache full:https://registry.npmjs.org/@langchain%2fgoogle-genai set size:undefined disposed:false
+31 silly fetch manifest @langchain/langgraph@1.1.0
+32 silly packumentCache full:https://registry.npmjs.org/@langchain%2flanggraph cache-miss
+33 http fetch GET 200 https://registry.npmjs.org/@langchain%2flanggraph 75ms (cache miss)
+34 silly packumentCache full:https://registry.npmjs.org/@langchain%2flanggraph set size:undefined disposed:false
+35 silly fetch manifest zod@^3.23.8
+36 silly packumentCache full:https://registry.npmjs.org/zod cache-miss
+37 http fetch GET 200 https://registry.npmjs.org/zod 124ms (cache miss)
+38 silly packumentCache full:https://registry.npmjs.org/zod set size:undefined disposed:false
+39 silly fetch manifest zod-to-json-schema@^3.x
+40 silly packumentCache full:https://registry.npmjs.org/zod-to-json-schema cache-miss
+41 http fetch GET 200 https://registry.npmjs.org/zod-to-json-schema 54ms (cache miss)
+42 silly packumentCache full:https://registry.npmjs.org/zod-to-json-schema set size:undefined disposed:false
+43 silly placeDep ROOT @langchain/core@1.1.15 REPLACE for: shoppinglens-backend@0.1.0 want: 1.1.15
+44 silly placeDep ROOT @langchain/google-genai@2.1.10 REPLACE for: shoppinglens-backend@0.1.0 want: 2.1.10
+45 silly placeDep ROOT @langchain/langgraph@1.1.0 REPLACE for: shoppinglens-backend@0.1.0 want: 1.1.0
+46 silly fetch manifest langsmith@>=0.4.0 <1.0.0
+47 silly packumentCache full:https://registry.npmjs.org/langsmith cache-miss
+48 silly fetch manifest uuid@^11.1.0
+49 silly packumentCache full:https://registry.npmjs.org/uuid cache-miss
+50 silly fetch manifest @google/generative-ai@^0.24.0
+51 silly packumentCache full:https://registry.npmjs.org/@google%2fgenerative-ai cache-miss
+52 silly fetch manifest @langchain/langgraph-sdk@~1.5.4
+53 silly packumentCache full:https://registry.npmjs.org/@langchain%2flanggraph-sdk cache-miss
+54 silly fetch manifest @langchain/langgraph-checkpoint@^1.0.0
+55 silly packumentCache full:https://registry.npmjs.org/@langchain%2flanggraph-checkpoint cache-miss
+56 http fetch GET 200 https://registry.npmjs.org/uuid 54ms (cache miss)
+57 silly packumentCache full:https://registry.npmjs.org/uuid set size:undefined disposed:false
+58 http fetch GET 200 https://registry.npmjs.org/langsmith 102ms (cache miss)
+59 silly packumentCache full:https://registry.npmjs.org/langsmith set size:undefined disposed:false
+60 http fetch GET 200 https://registry.npmjs.org/@google%2fgenerative-ai 113ms (cache miss)
+61 silly packumentCache full:https://registry.npmjs.org/@google%2fgenerative-ai set size:undefined disposed:false
+62 http fetch GET 200 https://registry.npmjs.org/@langchain%2flanggraph-checkpoint 152ms (cache miss)
+63 silly packumentCache full:https://registry.npmjs.org/@langchain%2flanggraph-checkpoint set size:undefined disposed:false
+64 http fetch GET 200 https://registry.npmjs.org/@langchain%2flanggraph-sdk 162ms (cache miss)
+65 silly packumentCache full:https://registry.npmjs.org/@langchain%2flanggraph-sdk set size:undefined disposed:false
+66 silly fetch manifest @opentelemetry/api@*
+67 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fapi cache-miss
+68 http fetch GET 200 https://registry.npmjs.org/@opentelemetry%2fapi 70ms (cache miss)
+69 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fapi set size:undefined disposed:false
+70 silly fetch manifest @opentelemetry/exporter-trace-otlp-proto@*
+71 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fexporter-trace-otlp-proto cache-miss
+72 http fetch GET 200 https://registry.npmjs.org/@opentelemetry%2fexporter-trace-otlp-proto 61ms (cache miss)
+73 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fexporter-trace-otlp-proto set size:undefined disposed:false
+74 silly fetch manifest @opentelemetry/sdk-trace-base@*
+75 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fsdk-trace-base cache-miss
+76 http fetch GET 200 https://registry.npmjs.org/@opentelemetry%2fsdk-trace-base 90ms (cache miss)
+77 silly packumentCache full:https://registry.npmjs.org/@opentelemetry%2fsdk-trace-base set size:undefined disposed:false
+78 silly fetch manifest openai@*
+79 silly packumentCache full:https://registry.npmjs.org/openai cache-miss
+80 http fetch GET 200 https://registry.npmjs.org/openai 75ms (cache miss)
+81 silly packumentCache full:https://registry.npmjs.org/openai set size:undefined disposed:false
+82 silly fetch manifest ws@^8.18.0
+83 silly packumentCache full:https://registry.npmjs.org/ws cache-miss
+84 http fetch GET 200 https://registry.npmjs.org/ws 56ms (cache miss)
+85 silly packumentCache full:https://registry.npmjs.org/ws set size:undefined disposed:false
+86 silly fetch manifest bufferutil@^4.0.1
+87 silly packumentCache full:https://registry.npmjs.org/bufferutil cache-miss
+88 http fetch GET 200 https://registry.npmjs.org/bufferutil 41ms (cache miss)
+89 silly packumentCache full:https://registry.npmjs.org/bufferutil set size:undefined disposed:false
+90 silly fetch manifest utf-8-validate@>=5.0.2
+91 silly packumentCache full:https://registry.npmjs.org/utf-8-validate cache-miss
+92 http fetch GET 200 https://registry.npmjs.org/utf-8-validate 87ms (cache miss)
+93 silly packumentCache full:https://registry.npmjs.org/utf-8-validate set size:undefined disposed:false
+94 silly fetch manifest zod@^3.25.76 || ^4
+95 silly packumentCache full:https://registry.npmjs.org/zod cache-miss
+96 http cache https://registry.npmjs.org/zod 10ms (cache hit)
+97 silly packumentCache full:https://registry.npmjs.org/zod set size:3462856 disposed:false
+98 silly placeDep ROOT langsmith@0.4.7 OK for: @langchain/core@1.1.15 want: >=0.4.0 <1.0.0
+99 silly fetch manifest @types/uuid@^10.0.0
+100 silly packumentCache full:https://registry.npmjs.org/@types%2fuuid cache-miss
+101 silly fetch manifest chalk@^4.1.2
+102 silly packumentCache full:https://registry.npmjs.org/chalk cache-miss
+103 silly fetch manifest console-table-printer@^2.12.1
+104 silly packumentCache full:https://registry.npmjs.org/console-table-printer cache-miss
+105 silly fetch manifest semver@^7.6.3
+106 silly packumentCache full:https://registry.npmjs.org/semver cache-miss
+107 http fetch GET 200 https://registry.npmjs.org/semver 53ms (cache miss)
+108 silly packumentCache full:https://registry.npmjs.org/semver set size:undefined disposed:false
+109 http fetch GET 200 https://registry.npmjs.org/chalk 56ms (cache miss)
+110 silly packumentCache full:https://registry.npmjs.org/chalk set size:undefined disposed:false
+111 http fetch GET 200 https://registry.npmjs.org/console-table-printer 87ms (cache miss)
+112 silly packumentCache full:https://registry.npmjs.org/console-table-printer set size:undefined disposed:false
+113 http fetch GET 200 https://registry.npmjs.org/@types%2fuuid 92ms (cache miss)
+114 silly packumentCache full:https://registry.npmjs.org/@types%2fuuid set size:undefined disposed:false
+115 silly placeDep ROOT @google/generative-ai@0.24.1 OK for: @langchain/google-genai@2.1.10 want: ^0.24.0
+116 silly placeDep node_modules/@langchain/google-genai uuid@11.1.0 OK for: @langchain/google-genai@2.1.10 want: ^11.1.0
+117 silly fetch manifest @langchain/core@^1.0.1
+118 silly packumentCache full:https://registry.npmjs.org/@langchain%2fcore cache-miss
+119 http cache https://registry.npmjs.org/@langchain%2fcore 8ms (cache hit)
+120 silly packumentCache full:https://registry.npmjs.org/@langchain%2fcore set size:4177996 disposed:false
+121 silly fetch manifest react@^18 || ^19
+122 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+123 http fetch GET 200 https://registry.npmjs.org/react 278ms (cache miss)
+124 silly packumentCache full:https://registry.npmjs.org/react set size:undefined disposed:false
+125 silly fetch manifest react-dom@^18 || ^19
+126 silly packumentCache full:https://registry.npmjs.org/react-dom cache-miss
+127 http fetch GET 200 https://registry.npmjs.org/react-dom 285ms (cache miss)
+128 silly packumentCache full:https://registry.npmjs.org/react-dom set size:undefined disposed:false
+129 silly placeDep ROOT @langchain/langgraph-checkpoint@1.0.0 OK for: @langchain/langgraph@1.1.0 want: ^1.0.0
+130 silly placeDep ROOT @langchain/langgraph-sdk@1.5.4 OK for: @langchain/langgraph@1.1.0 want: ~1.5.4
+131 silly fetch manifest uuid@^13.0.0
+132 silly packumentCache full:https://registry.npmjs.org/uuid cache-miss
+133 silly fetch manifest p-queue@^9.0.1
+134 silly packumentCache full:https://registry.npmjs.org/p-queue cache-miss
+135 silly fetch manifest p-retry@^7.1.1
+136 silly packumentCache full:https://registry.npmjs.org/p-retry cache-miss
+137 http cache https://registry.npmjs.org/uuid 8ms (cache hit)
+138 silly packumentCache full:https://registry.npmjs.org/uuid set size:224608 disposed:false
+139 http fetch GET 200 https://registry.npmjs.org/p-queue 43ms (cache miss)
+140 silly packumentCache full:https://registry.npmjs.org/p-queue set size:undefined disposed:false
+141 http fetch GET 200 https://registry.npmjs.org/p-retry 52ms (cache miss)
+142 silly packumentCache full:https://registry.npmjs.org/p-retry set size:undefined disposed:false
+143 silly placeDep node_modules/@langchain/langgraph-sdk p-queue@9.1.0 OK for: @langchain/langgraph-sdk@1.5.4 want: ^9.0.1
+144 silly placeDep ROOT p-retry@7.1.1 OK for: @langchain/langgraph-sdk@1.5.4 want: ^7.1.1
+145 silly placeDep node_modules/@langchain/langgraph-sdk uuid@13.0.0 OK for: @langchain/langgraph-sdk@1.5.4 want: ^13.0.0
+146 silly fetch manifest eventemitter3@^5.0.1
+147 silly packumentCache full:https://registry.npmjs.org/eventemitter3 cache-miss
+148 silly fetch manifest p-timeout@^7.0.0
+149 silly packumentCache full:https://registry.npmjs.org/p-timeout cache-miss
+150 silly fetch manifest is-network-error@^1.1.0
+151 silly packumentCache full:https://registry.npmjs.org/is-network-error cache-miss
+152 http fetch GET 200 https://registry.npmjs.org/is-network-error 39ms (cache miss)
+153 silly packumentCache full:https://registry.npmjs.org/is-network-error set size:undefined disposed:false
+154 http fetch GET 200 https://registry.npmjs.org/eventemitter3 41ms (cache miss)
+155 silly packumentCache full:https://registry.npmjs.org/eventemitter3 set size:undefined disposed:false
+156 http fetch GET 200 https://registry.npmjs.org/p-timeout 82ms (cache miss)
+157 silly packumentCache full:https://registry.npmjs.org/p-timeout set size:undefined disposed:false
+158 silly placeDep ROOT @types/uuid@10.0.0 OK for: langsmith@0.4.7 want: ^10.0.0
+159 silly placeDep ROOT chalk@4.1.2 OK for: langsmith@0.4.7 want: ^4.1.2
+160 silly placeDep ROOT console-table-printer@2.15.0 OK for: langsmith@0.4.7 want: ^2.12.1
+161 silly placeDep ROOT semver@7.7.3 OK for: langsmith@0.4.7 want: ^7.6.3
+162 silly fetch manifest ansi-styles@^4.1.0
+163 silly packumentCache full:https://registry.npmjs.org/ansi-styles cache-miss
+164 silly fetch manifest supports-color@^7.1.0
+165 silly packumentCache full:https://registry.npmjs.org/supports-color cache-miss
+166 silly fetch manifest simple-wcswidth@^1.1.2
+167 silly packumentCache full:https://registry.npmjs.org/simple-wcswidth cache-miss
+168 http fetch GET 200 https://registry.npmjs.org/ansi-styles 48ms (cache miss)
+169 silly packumentCache full:https://registry.npmjs.org/ansi-styles set size:undefined disposed:false
+170 http fetch GET 200 https://registry.npmjs.org/simple-wcswidth 52ms (cache miss)
+171 silly packumentCache full:https://registry.npmjs.org/simple-wcswidth set size:undefined disposed:false
+172 http fetch GET 200 https://registry.npmjs.org/supports-color 62ms (cache miss)
+173 silly packumentCache full:https://registry.npmjs.org/supports-color set size:undefined disposed:false
+174 silly placeDep node_modules/chalk ansi-styles@4.3.0 OK for: chalk@4.1.2 want: ^4.1.0
+175 silly placeDep ROOT supports-color@7.2.0 OK for: chalk@4.1.2 want: ^7.1.0
+176 silly fetch manifest color-convert@^2.0.1
+177 silly packumentCache full:https://registry.npmjs.org/color-convert cache-miss
+178 silly fetch manifest has-flag@^4.0.0
+179 silly packumentCache full:https://registry.npmjs.org/has-flag cache-miss
+180 http fetch GET 200 https://registry.npmjs.org/has-flag 59ms (cache miss)
+181 silly packumentCache full:https://registry.npmjs.org/has-flag set size:undefined disposed:false
+182 http fetch GET 200 https://registry.npmjs.org/color-convert 59ms (cache miss)
+183 silly packumentCache full:https://registry.npmjs.org/color-convert set size:undefined disposed:false
+184 silly placeDep ROOT simple-wcswidth@1.1.2 OK for: console-table-printer@2.15.0 want: ^1.1.2
+185 silly placeDep ROOT is-network-error@1.3.0 OK for: p-retry@7.1.1 want: ^1.1.0
+186 silly placeDep ROOT has-flag@4.0.0 OK for: supports-color@7.2.0 want: ^4.0.0
+187 silly placeDep node_modules/@langchain/langgraph-sdk eventemitter3@5.0.1 OK for: p-queue@9.1.0 want: ^5.0.1
+188 silly placeDep node_modules/@langchain/langgraph-sdk p-timeout@7.0.1 OK for: p-queue@9.1.0 want: ^7.0.0
+189 silly placeDep ROOT color-convert@2.0.1 OK for: ansi-styles@4.3.0 want: ^2.0.1
+190 silly fetch manifest color-name@~1.1.4
+191 silly packumentCache full:https://registry.npmjs.org/color-name cache-miss
+192 http fetch GET 200 https://registry.npmjs.org/color-name 48ms (cache miss)
+193 silly packumentCache full:https://registry.npmjs.org/color-name set size:undefined disposed:false
+194 silly placeDep ROOT color-name@1.1.4 OK for: color-convert@2.0.1 want: ~1.1.4
+195 silly reify mark retired [
+195 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@google/generative-ai'
+195 silly reify ]
+196 silly reify mark retired [
+196 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/core'
+196 silly reify ]
+197 silly reify mark retired [
+197 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/google-genai'
+197 silly reify ]
+198 silly reify mark retired [
+198 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/langgraph'
+198 silly reify ]
+199 silly reify mark retired [
+199 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/langgraph-checkpoint'
+199 silly reify ]
+200 silly reify mark retired [
+200 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/langgraph-sdk'
+200 silly reify ]
+201 silly reify mark retired [
+201 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@types/json-schema'
+201 silly reify ]
+202 silly reify mark retired [
+202 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@types/retry'
+202 silly reify ]
+203 silly reify mark retired [
+203 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/commander'
+203 silly reify ]
+204 silly reify mark retired [
+204 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/langsmith'
+204 silly reify ]
+205 silly reify mark retired [
+205 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/p-retry'
+205 silly reify ]
+206 silly reify mark retired [
+206 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/retry'
+206 silly reify ]
+207 silly reify moves {
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@google/generative-ai': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@google/.generative-ai-8sexkWPv',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/core': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/.core-ExhisEsL',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/google-genai': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/.google-genai-AZB5t67C',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/langgraph': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/.langgraph-TPVv6knG',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/langgraph-checkpoint': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/.langgraph-checkpoint-DV0H7SwW',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/langgraph-sdk': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@langchain/.langgraph-sdk-e16OxYkN',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@types/json-schema': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@types/.json-schema-MAQgJvIr',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@types/retry': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/@types/.retry-Hh3aaM2v',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/commander': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/.commander-kAC2nwQ7',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/langsmith': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/.langsmith-O3OWTIZ6',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/p-retry': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/.p-retry-Q6WWNXx7',
+207 silly reify   '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/retry': '/Users/khoadangnguyen/Desktop/shoppinglens/backend/node_modules/.retry-pFE2IqR0'
+207 silly reify }
+208 silly audit bulk request {
+208 silly audit   '@bufbuild/protobuf': [ '1.10.1' ],
+208 silly audit   '@cfworker/json-schema': [ '4.1.1' ],
+208 silly audit   '@esbuild/aix-ppc64': [ '0.27.2' ],
+208 silly audit   '@esbuild/android-arm': [ '0.27.2' ],
+208 silly audit   '@esbuild/android-arm64': [ '0.27.2' ],
+208 silly audit   '@esbuild/android-x64': [ '0.27.2' ],
+208 silly audit   '@esbuild/darwin-arm64': [ '0.27.2' ],
+208 silly audit   '@esbuild/darwin-x64': [ '0.27.2' ],
+208 silly audit   '@esbuild/freebsd-arm64': [ '0.27.2' ],
+208 silly audit   '@esbuild/freebsd-x64': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-arm': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-arm64': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-ia32': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-loong64': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-mips64el': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-ppc64': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-riscv64': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-s390x': [ '0.27.2' ],
+208 silly audit   '@esbuild/linux-x64': [ '0.27.2' ],
+208 silly audit   '@esbuild/netbsd-arm64': [ '0.27.2' ],
+208 silly audit   '@esbuild/netbsd-x64': [ '0.27.2' ],
+208 silly audit   '@esbuild/openbsd-arm64': [ '0.27.2' ],
+208 silly audit   '@esbuild/openbsd-x64': [ '0.27.2' ],
+208 silly audit   '@esbuild/openharmony-arm64': [ '0.27.2' ],
+208 silly audit   '@esbuild/sunos-x64': [ '0.27.2' ],
+208 silly audit   '@esbuild/win32-arm64': [ '0.27.2' ],
+208 silly audit   '@esbuild/win32-ia32': [ '0.27.2' ],
+208 silly audit   '@esbuild/win32-x64': [ '0.27.2' ],
+208 silly audit   '@langchain/core': [ '1.1.15' ],
+208 silly audit   camelcase: [ '8.0.0', '6.3.0' ],
+208 silly audit   uuid: [ '10.0.0', '11.1.0', '13.0.0' ],
+208 silly audit   '@livekit/protocol': [ '1.44.0' ],
+208 silly audit   '@types/body-parser': [ '1.19.6' ],
+208 silly audit   '@types/connect': [ '3.4.38' ],
+208 silly audit   '@types/express': [ '4.17.25' ],
+208 silly audit   '@types/express-serve-static-core': [ '4.19.8' ],
+208 silly audit   '@types/http-errors': [ '2.0.5' ],
+208 silly audit   '@types/mime': [ '1.3.5' ],
+208 silly audit   '@types/node': [ '20.19.30' ],
+208 silly audit   '@types/qs': [ '6.14.0' ],
+208 silly audit   '@types/range-parser': [ '1.2.7' ],
+208 silly audit   '@types/send': [ '1.2.1', '0.17.6' ],
+208 silly audit   '@types/serve-static': [ '1.15.10' ],
+208 silly audit   '@types/ws': [ '8.18.1' ],
+208 silly audit   accepts: [ '1.3.8' ],
+208 silly audit   'ansi-styles': [ '5.2.0', '4.3.0' ],
+208 silly audit   'array-flatten': [ '1.1.1' ],
+208 silly audit   'base64-js': [ '1.5.1' ],
+208 silly audit   'body-parser': [ '1.20.4' ],
+208 silly audit   bytes: [ '3.1.2' ],
+208 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+208 silly audit   'call-bound': [ '1.0.4' ],
+208 silly audit   'camelcase-keys': [ '9.1.3' ],
+208 silly audit   'content-disposition': [ '0.5.4' ],
+208 silly audit   'content-type': [ '1.0.5' ],
+208 silly audit   cookie: [ '0.7.2' ],
+208 silly audit   'cookie-signature': [ '1.0.7' ],
+208 silly audit   debug: [ '2.6.9' ],
+208 silly audit   decamelize: [ '1.2.0' ],
+208 silly audit   depd: [ '2.0.0' ],
+208 silly audit   destroy: [ '1.2.0' ],
+208 silly audit   dotenv: [ '16.6.1' ],
+208 silly audit   'dunder-proto': [ '1.0.1' ],
+208 silly audit   'ee-first': [ '1.1.1' ],
+208 silly audit   encodeurl: [ '2.0.0' ],
+208 silly audit   'es-define-property': [ '1.0.1' ],
+208 silly audit   'es-errors': [ '1.3.0' ],
+208 silly audit   'es-object-atoms': [ '1.1.1' ],
+208 silly audit   esbuild: [ '0.27.2' ],
+208 silly audit   'escape-html': [ '1.0.3' ],
+208 silly audit   etag: [ '1.8.1' ],
+208 silly audit   eventemitter3: [ '4.0.7', '5.0.1' ],
+208 silly audit   express: [ '4.22.1' ],
+208 silly audit   finalhandler: [ '1.3.2' ],
+208 silly audit   forwarded: [ '0.2.0' ],
+208 silly audit   fresh: [ '0.5.2' ],
+208 silly audit   fsevents: [ '2.3.3' ],
+208 silly audit   'function-bind': [ '1.1.2' ],
+208 silly audit   'get-intrinsic': [ '1.3.0' ],
+208 silly audit   'get-proto': [ '1.0.1' ],
+208 silly audit   'get-tsconfig': [ '4.13.0' ],
+208 silly audit   gopd: [ '1.2.0' ],
+208 silly audit   'has-symbols': [ '1.1.0' ],
+208 silly audit   hasown: [ '2.0.2' ],
+208 silly audit   'http-errors': [ '2.0.1' ],
+208 silly audit   'iconv-lite': [ '0.4.24' ],
+208 silly audit   inherits: [ '2.0.4' ],
+208 silly audit   'ipaddr.js': [ '1.9.1' ],
+208 silly audit   jose: [ '5.10.0' ],
+208 silly audit   'js-tiktoken': [ '1.0.21' ],
+208 silly audit   'livekit-server-sdk': [ '2.15.0' ],
+208 silly audit   'map-obj': [ '5.0.0' ],
+208 silly audit   'math-intrinsics': [ '1.1.0' ],
+208 silly audit   'media-typer': [ '0.3.0' ],
+208 silly audit   'merge-descriptors': [ '1.0.3' ],
+208 silly audit   methods: [ '1.1.2' ],
+208 silly audit   mime: [ '1.6.0' ],
+208 silly audit   'mime-db': [ '1.52.0' ],
+208 silly audit   'mime-types': [ '2.1.35' ],
+208 silly audit   ms: [ '2.0.0', '2.1.3' ],
+208 silly audit   mustache: [ '4.2.0' ],
+208 silly audit   negotiator: [ '0.6.3' ],
+208 silly audit   'object-inspect': [ '1.13.4' ],
+208 silly audit   'on-finished': [ '2.4.1' ],
+208 silly audit   'p-finally': [ '1.0.0' ],
+208 silly audit   'p-queue': [ '6.6.2', '9.1.0' ],
+208 silly audit   'p-timeout': [ '3.2.0', '7.0.1' ],
+208 silly audit   parseurl: [ '1.3.3' ],
+208 silly audit   'path-to-regexp': [ '0.1.12' ],
+208 silly audit   'proxy-addr': [ '2.0.7' ],
+208 silly audit   qs: [ '6.14.1' ],
+208 silly audit   'quick-lru': [ '6.1.2' ],
+208 silly audit   'range-parser': [ '1.2.1' ],
+208 silly audit   'raw-body': [ '2.5.3' ],
+208 silly audit   'resolve-pkg-maps': [ '1.0.0' ],
+208 silly audit   'safe-buffer': [ '5.2.1' ],
+208 silly audit   'safer-buffer': [ '2.1.2' ],
+208 silly audit   send: [ '0.19.2' ],
+208 silly audit   'serve-static': [ '1.16.3' ],
+208 silly audit   setprototypeof: [ '1.2.0' ],
+208 silly audit   'side-channel': [ '1.1.0' ],
+208 silly audit   'side-channel-list': [ '1.0.0' ],
+208 silly audit   'side-channel-map': [ '1.0.1' ],
+208 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+208 silly audit   statuses: [ '2.0.2' ],
+208 silly audit   toidentifier: [ '1.0.1' ],
+208 silly audit   tsx: [ '4.21.0' ],
+208 silly audit   'type-fest': [ '4.41.0' ],
+208 silly audit   'type-is': [ '1.6.18' ],
+208 silly audit   typescript: [ '5.9.3' ],
+208 silly audit   'undici-types': [ '6.21.0' ],
+208 silly audit   unpipe: [ '1.0.0' ],
+208 silly audit   'utils-merge': [ '1.0.1' ],
+208 silly audit   vary: [ '1.1.2' ],
+208 silly audit   ws: [ '8.19.0' ],
+208 silly audit   zod: [ '3.25.76' ],
+208 silly audit   'zod-to-json-schema': [ '3.25.1' ],
+208 silly audit   '@langchain/google-genai': [ '2.1.10' ],
+208 silly audit   '@langchain/langgraph': [ '1.1.0' ],
+208 silly audit   langsmith: [ '0.4.7' ],
+208 silly audit   '@google/generative-ai': [ '0.24.1' ],
+208 silly audit   '@langchain/langgraph-checkpoint': [ '1.0.0' ],
+208 silly audit   '@langchain/langgraph-sdk': [ '1.5.4' ],
+208 silly audit   'p-retry': [ '7.1.1' ],
+208 silly audit   '@types/uuid': [ '10.0.0' ],
+208 silly audit   chalk: [ '4.1.2' ],
+208 silly audit   'console-table-printer': [ '2.15.0' ],
+208 silly audit   semver: [ '7.7.3' ],
+208 silly audit   'supports-color': [ '7.2.0' ],
+208 silly audit   'simple-wcswidth': [ '1.1.2' ],
+208 silly audit   'is-network-error': [ '1.3.0' ],
+208 silly audit   'has-flag': [ '4.0.0' ],
+208 silly audit   'color-convert': [ '2.0.1' ],
+208 silly audit   'color-name': [ '1.1.4' ]
+208 silly audit }
+209 http cache is-network-error@https://registry.npmjs.org/is-network-error/-/is-network-error-1.3.0.tgz 0ms (cache hit)
+210 http cache p-retry@https://registry.npmjs.org/p-retry/-/p-retry-7.1.1.tgz 0ms (cache hit)
+211 http cache @langchain/langgraph-sdk@https://registry.npmjs.org/@langchain/langgraph-sdk/-/langgraph-sdk-1.5.4.tgz 0ms (cache hit)
+212 http cache langsmith@https://registry.npmjs.org/langsmith/-/langsmith-0.4.7.tgz 0ms (cache hit)
+213 http cache @langchain/langgraph-checkpoint@https://registry.npmjs.org/@langchain/langgraph-checkpoint/-/langgraph-checkpoint-1.0.0.tgz 0ms (cache hit)
+214 http cache @google/generative-ai@https://registry.npmjs.org/@google/generative-ai/-/generative-ai-0.24.1.tgz 0ms (cache hit)
+215 http cache p-timeout@https://registry.npmjs.org/p-timeout/-/p-timeout-7.0.1.tgz 0ms (cache hit)
+216 http cache eventemitter3@https://registry.npmjs.org/eventemitter3/-/eventemitter3-5.0.1.tgz 0ms (cache hit)
+217 http cache p-queue@https://registry.npmjs.org/p-queue/-/p-queue-9.1.0.tgz 0ms (cache hit)
+218 http cache @langchain/google-genai@https://registry.npmjs.org/@langchain/google-genai/-/google-genai-2.1.10.tgz 0ms (cache hit)
+219 http cache uuid@https://registry.npmjs.org/uuid/-/uuid-13.0.0.tgz 0ms (cache hit)
+220 http cache @langchain/core@https://registry.npmjs.org/@langchain/core/-/core-1.1.15.tgz 0ms (cache hit)
+221 http cache uuid@https://registry.npmjs.org/uuid/-/uuid-11.1.0.tgz 0ms (cache hit)
+222 http cache @langchain/langgraph@https://registry.npmjs.org/@langchain/langgraph/-/langgraph-1.1.0.tgz 0ms (cache hit)
+223 silly tarball no local data for is-network-error@https://registry.npmjs.org/is-network-error/-/is-network-error-1.3.0.tgz. Extracting by manifest.
+224 silly tarball no local data for p-retry@https://registry.npmjs.org/p-retry/-/p-retry-7.1.1.tgz. Extracting by manifest.
+225 silly tarball no local data for @langchain/langgraph-sdk@https://registry.npmjs.org/@langchain/langgraph-sdk/-/langgraph-sdk-1.5.4.tgz. Extracting by manifest.
+226 silly tarball no local data for langsmith@https://registry.npmjs.org/langsmith/-/langsmith-0.4.7.tgz. Extracting by manifest.
+227 silly tarball no local data for @langchain/langgraph-checkpoint@https://registry.npmjs.org/@langchain/langgraph-checkpoint/-/langgraph-checkpoint-1.0.0.tgz. Extracting by manifest.
+228 silly tarball no local data for @google/generative-ai@https://registry.npmjs.org/@google/generative-ai/-/generative-ai-0.24.1.tgz. Extracting by manifest.
+229 silly tarball no local data for p-timeout@https://registry.npmjs.org/p-timeout/-/p-timeout-7.0.1.tgz. Extracting by manifest.
+230 silly tarball no local data for eventemitter3@https://registry.npmjs.org/eventemitter3/-/eventemitter3-5.0.1.tgz. Extracting by manifest.
+231 silly tarball no local data for p-queue@https://registry.npmjs.org/p-queue/-/p-queue-9.1.0.tgz. Extracting by manifest.
+232 silly tarball no local data for @langchain/google-genai@https://registry.npmjs.org/@langchain/google-genai/-/google-genai-2.1.10.tgz. Extracting by manifest.
+233 silly tarball no local data for uuid@https://registry.npmjs.org/uuid/-/uuid-13.0.0.tgz. Extracting by manifest.
+234 silly tarball no local data for @langchain/core@https://registry.npmjs.org/@langchain/core/-/core-1.1.15.tgz. Extracting by manifest.
+235 silly tarball no local data for uuid@https://registry.npmjs.org/uuid/-/uuid-11.1.0.tgz. Extracting by manifest.
+236 silly tarball no local data for @langchain/langgraph@https://registry.npmjs.org/@langchain/langgraph/-/langgraph-1.1.0.tgz. Extracting by manifest.
+237 http fetch GET 200 https://registry.npmjs.org/p-retry/-/p-retry-7.1.1.tgz 60ms (cache miss)
+238 http fetch GET 200 https://registry.npmjs.org/is-network-error/-/is-network-error-1.3.0.tgz 132ms (cache miss)
+239 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 174ms
+240 silly audit report {}
+241 http fetch GET 200 https://registry.npmjs.org/langsmith/-/langsmith-0.4.7.tgz 228ms (cache miss)
+242 http fetch GET 200 https://registry.npmjs.org/p-timeout/-/p-timeout-7.0.1.tgz 228ms (cache miss)
+243 http fetch GET 200 https://registry.npmjs.org/eventemitter3/-/eventemitter3-5.0.1.tgz 245ms (cache miss)
+244 http fetch GET 200 https://registry.npmjs.org/p-queue/-/p-queue-9.1.0.tgz 246ms (cache miss)
+245 http fetch GET 200 https://registry.npmjs.org/@langchain/langgraph-sdk/-/langgraph-sdk-1.5.4.tgz 254ms (cache miss)
+246 http fetch GET 200 https://registry.npmjs.org/uuid/-/uuid-13.0.0.tgz 272ms (cache miss)
+247 http fetch GET 200 https://registry.npmjs.org/@google/generative-ai/-/generative-ai-0.24.1.tgz 284ms (cache miss)
+248 http fetch GET 200 https://registry.npmjs.org/@langchain/google-genai/-/google-genai-2.1.10.tgz 295ms (cache miss)
+249 http fetch GET 200 https://registry.npmjs.org/uuid/-/uuid-11.1.0.tgz 327ms (cache miss)
+250 http fetch GET 200 https://registry.npmjs.org/@langchain/langgraph-checkpoint/-/langgraph-checkpoint-1.0.0.tgz 356ms (cache miss)
+251 http fetch GET 200 https://registry.npmjs.org/@langchain/langgraph/-/langgraph-1.1.0.tgz 476ms (cache miss)
+252 http fetch GET 200 https://registry.npmjs.org/@langchain/core/-/core-1.1.15.tgz 1142ms (cache miss)
+253 silly ADD node_modules/is-network-error
+254 silly REMOVE node_modules/retry
+255 silly CHANGE node_modules/p-retry
+256 silly CHANGE node_modules/langsmith
+257 silly REMOVE node_modules/commander
+258 silly REMOVE node_modules/@types/retry
+259 silly REMOVE node_modules/@types/json-schema
+260 silly CHANGE node_modules/@langchain/langgraph-sdk
+261 silly ADD node_modules/@langchain/langgraph-sdk/node_modules/p-timeout
+262 silly ADD node_modules/@langchain/langgraph-sdk/node_modules/eventemitter3
+263 silly ADD node_modules/@langchain/langgraph-sdk/node_modules/p-queue
+264 silly CHANGE node_modules/@langchain/langgraph-sdk/node_modules/uuid
+265 silly CHANGE node_modules/@langchain/langgraph-checkpoint
+266 silly CHANGE node_modules/@langchain/langgraph
+267 silly CHANGE node_modules/@langchain/google-genai
+268 silly ADD node_modules/@langchain/google-genai/node_modules/uuid
+269 silly REMOVE node_modules/@langchain/google-genai/node_modules/langsmith
+270 silly REMOVE node_modules/@langchain/google-genai/node_modules/camelcase
+271 silly REMOVE node_modules/@langchain/google-genai/node_modules/@langchain/core
+272 silly CHANGE node_modules/@langchain/core
+273 silly CHANGE node_modules/@google/generative-ai
+274 verbose cwd /Users/khoadangnguyen/Desktop/shoppinglens/backend
+275 verbose os Darwin 23.5.0
+276 verbose node v24.2.0
+277 verbose npm  v11.3.0
+278 verbose exit 0
+279 info ok
