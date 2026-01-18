@@ -33,15 +33,26 @@ async function main() {
     );
   }
 
-  // Create the search tool using the existing stub tools
+  // Create the search tools using the existing stub tools
   const stubTools = createStubTools();
   const searchTool = createSearchTool(stubTools.searchWeb, {
     fetchPage: stubTools.fetchPage,
     geminiApiKey,
   });
+  const structuredSearchTool = createSearchTool(stubTools.searchWeb, {
+    fetchPage: stubTools.fetchPage,
+    geminiApiKey,
+    structuredOutput: true,
+    toolName: "search_structured",
+  });
 
   // Create the ReAct agent with the search tool and LangSmith tracing
   const agent = createReActAgent([searchTool], geminiApiKey, {
+    langsmithApiKey,
+    langsmithProject,
+    enableTracing: !!langsmithApiKey,
+  });
+  const structuredAgent = createReActAgent([structuredSearchTool], geminiApiKey, {
     langsmithApiKey,
     langsmithProject,
     enableTracing: !!langsmithApiKey,
@@ -56,6 +67,8 @@ async function main() {
     "What are the best wireless headphones under $100?",
     "Search for iPhone 15 Pro Max pricing",
   ];
+  const structuredQuery =
+    "Find the latest price and competitor prices for Sony WH-1000XM5 and return a structured shopping summary.";
 
   for (const query of testQueries) {
     console.log("=".repeat(60));
@@ -105,6 +118,59 @@ async function main() {
         if (error.stack) {
           console.error("Stack:", error.stack);
         }
+      }
+    }
+  }
+
+  console.log("=".repeat(60));
+  console.log(`\n🤖 Structured Output Query: ${structuredQuery}\n`);
+  console.log("Processing structured output...\n");
+
+  try {
+    const startTime = Date.now();
+    const result = await structuredAgent.invoke({
+      messages: [
+        new HumanMessage(
+          `Use the search_structured tool. Return only the JSON response from that tool.\n\n${structuredQuery}`
+        ),
+      ],
+    });
+    const duration = Date.now() - startTime;
+    const lastMessage = result.messages[result.messages.length - 1];
+    const response = typeof lastMessage.content === "string"
+      ? lastMessage.content
+      : JSON.stringify(lastMessage.content, null, 2);
+
+    console.log("🧾 Structured JSON Response (agent):");
+    console.log(response);
+    console.log(`\n⏱️  Execution time: ${duration}ms`);
+    console.log(`📊 Total messages in conversation: ${result.messages.length}`);
+  } catch (error) {
+    console.error("❌ Error running structured agent:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", error.message);
+      if (error.stack) {
+        console.error("Stack:", error.stack);
+      }
+    }
+  }
+
+  console.log("\n🔎 Direct structured tool call (bypassing agent):\n");
+
+  try {
+    const startTime = Date.now();
+    const toolResult = await structuredSearchTool.invoke({ query: structuredQuery });
+    const duration = Date.now() - startTime;
+
+    console.log("🧾 Structured JSON Response (tool):");
+    console.log(toolResult);
+    console.log(`\n⏱️  Execution time: ${duration}ms`);
+  } catch (error) {
+    console.error("❌ Error running structured tool:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", error.message);
+      if (error.stack) {
+        console.error("Stack:", error.stack);
       }
     }
   }

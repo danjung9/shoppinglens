@@ -5,6 +5,24 @@ import { HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { SearchResult } from "../types.js";
 
+export const ShoppingDataSchema = z.object({
+  productName: z.string(),
+  brand: z.string(),
+  detectedPrice: z.string(),
+  competitors: z.array(
+    z.object({
+      site: z.string(),
+      price: z.string(),
+    })
+  ),
+  isCompatible: z.boolean(),
+  compatibilityNote: z.string(),
+  valueScore: z.enum(["buy", "hold", "avoid"]),
+  aiInsight: z.string(),
+});
+
+export type ShoppingData = z.infer<typeof ShoppingDataSchema>;
+
 const stripHtml = (html: string): string => {
   return html
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
@@ -24,8 +42,11 @@ export function createSearchTool(
     fetchPage?: (url: string) => Promise<string>;
     geminiApiKey?: string;
     maxPages?: number;
+    structuredOutput?: boolean;
+    toolName?: string;
   }
 ) {
+  const wantsStructured = options?.structuredOutput ?? true;
   return tool(
     async ({ query }: { query: string }) => {
       try {
@@ -65,7 +86,30 @@ export function createSearchTool(
             maxRetries: 1,
           });
 
-          const prompt = `Answer the question using ONLY the sources below. If the sources don't contain the answer, say so.
+          if (wantsStructured) {
+            const structuredModel = model.withStructuredOutput(ShoppingDataSchema, {
+              name: "shopping_data",
+            });
+            const structuredPrompt = `You are generating a structured shopping summary.
+Use ONLY the sources below. If data is missing, make conservative assumptions and mention uncertainty in aiInsight.
+
+Return fields:
+- productName
+- brand
+- detectedPrice (string like "$123.45")
+- competitors (array of { site, price })
+- isCompatible (boolean)
+- compatibilityNote
+- valueScore ("buy" | "hold" | "avoid")
+- aiInsight
+
+Question: ${query}
+
+${sourcesText}`;
+            const structured = await structuredModel.invoke([new HumanMessage(structuredPrompt)]);
+            synthesizedAnswer = JSON.stringify(structured, null, 2);
+          } else {
+            const prompt = `Answer the question using ONLY the sources below. If the sources don't contain the answer, say so.
 
 Question: ${query}
 
@@ -73,11 +117,27 @@ ${sourcesText}
 
 Respond in 2-4 sentences. Include citations as [1], [2], etc.`;
 
-          const response = await model.invoke([new HumanMessage(prompt)]);
-          synthesizedAnswer =
-            typeof response.content === "string"
-              ? response.content
-              : JSON.stringify(response.content);
+            const response = await model.invoke([new HumanMessage(prompt)]);
+            synthesizedAnswer =
+              typeof response.content === "string"
+                ? response.content
+                : JSON.stringify(response.content);
+          }
+        } else if (wantsStructured) {
+          const fallback = {
+            productName: query,
+            brand: "Unknown",
+            detectedPrice: "Unknown",
+            competitors: results.slice(0, 5).map((result) => ({
+              site: result.title,
+              price: "Unknown",
+            })),
+            isCompatible: false,
+            compatibilityNote: "Compatibility not assessed.",
+            valueScore: "hold",
+            aiInsight: "Structured output generated without page fetch or LLM.",
+          } satisfies ShoppingData;
+          synthesizedAnswer = JSON.stringify(fallback, null, 2);
         }
 
         const formattedResults = results
@@ -87,6 +147,9 @@ Respond in 2-4 sentences. Include citations as [1], [2], etc.`;
           .join("\n\n");
 
         if (synthesizedAnswer) {
+          if (wantsStructured) {
+            return synthesizedAnswer;
+          }
           return `Answer:\n${synthesizedAnswer}\n\nSources:\n${formattedResults}`;
         }
 
@@ -96,11 +159,12 @@ Respond in 2-4 sentences. Include citations as [1], [2], etc.`;
       }
     },
     {
-      name: "search",
+      name: options?.toolName ?? "search",
       description: "Search the web for information, products, or answers to questions. Use this tool when you need to find information online.",
       schema: z.object({
         query: z.string().describe("The search query string"),
       }),
+      returnDirect: wantsStructured,
     }
   );
 }

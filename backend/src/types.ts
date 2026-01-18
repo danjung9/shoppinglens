@@ -40,7 +40,29 @@ export type ResearchResultsPayload = {
     price: Price;
     image_url: string;
     reason: string;
+    source_url?: string;
   }[];
+};
+
+export type CompetitorPrice = {
+  site: string;
+  price: string;
+};
+
+export type ValueScore = "buy" | "hold" | "avoid";
+
+export type ShoppingSummaryPayload = {
+  type: "ShoppingSummary";
+  session_id: string;
+  thread_id: string;
+  productName: string;
+  brand: string;
+  detectedPrice: string;
+  competitors: CompetitorPrice[];
+  isCompatible: boolean;
+  compatibilityNote: string;
+  valueScore: ValueScore;
+  aiInsight: string;
 };
 
 export type AISummaryPayload = {
@@ -60,7 +82,11 @@ export type InfoPayload = {
   message: string;
 };
 
-export type AgentPayload = ResearchResultsPayload | AISummaryPayload | InfoPayload;
+export type AgentPayload =
+  | ResearchResultsPayload
+  | ShoppingSummaryPayload
+  | AISummaryPayload
+  | InfoPayload;
 
 export type SearchResult = {
   title: string;
