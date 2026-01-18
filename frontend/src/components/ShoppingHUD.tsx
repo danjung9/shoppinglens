@@ -42,8 +42,8 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
       >
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <ShoppingBag className="mb-4 h-10 w-10 text-white" />
-          <p className="text-base font-medium text-white">Point at a product</p>
-          <p className="mt-1 text-xs text-white">AI will identify and analyze it</p>
+          <p className="text-base font-medium text-white">Hold a product</p>
+          <p className="mt-1 text-xs text-white">To identify and analyze it</p>
         </div>
       </div>
     );
