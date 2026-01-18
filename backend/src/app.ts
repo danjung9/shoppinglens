@@ -9,6 +9,7 @@ import { AgentOrchestrator } from "./agent/orchestrator.js";
 import { StreamHub } from "./services/stream.js";
 import { createLiveKitPublisherFromEnv } from "./services/livekit.js";
 import { createOvershootBridgeFromEnv } from "./services/overshoot.js";
+import { createLiveKitQuestionListenerFromEnv } from "./services/livekitQuestions.js";
 
 export const createApp = () => {
   const app = express();
@@ -21,11 +22,14 @@ export const createApp = () => {
   const store = new SessionStore();
   const tools = createStubTools();
   const orchestrator = new AgentOrchestrator(store, streamHub, tools);
+  const livekitListener = createLiveKitQuestionListenerFromEnv((sessionId, question) =>
+    orchestrator.handleQuestion(sessionId, question),
+  );
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   app.use(express.static(path.join(__dirname, "../public")));
-  app.use("/", buildRoutes(orchestrator, overshootBridge));
+  app.use("/", buildRoutes(orchestrator, overshootBridge, livekitListener));
 
   return { app, httpServer };
 };

@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { AgentOrchestrator } from "../agent/orchestrator.js";
 import { PickupEvent } from "../types.js";
 import { OvershootBridge } from "./overshoot.js";
+import { LiveKitQuestionListener } from "./livekitQuestions.js";
 
 const isPickupEvent = (body: unknown): body is PickupEvent => {
   if (!body || typeof body !== "object") return false;
@@ -15,8 +16,18 @@ const isPickupEvent = (body: unknown): body is PickupEvent => {
   );
 };
 
-export const buildRoutes = (orchestrator: AgentOrchestrator, overshoot: OvershootBridge): Router => {
+export const buildRoutes = (
+  orchestrator: AgentOrchestrator,
+  overshoot: OvershootBridge,
+  livekitListener?: LiveKitQuestionListener,
+): Router => {
   const router = Router();
+  const ensureLiveKit = (sessionId: string) => {
+    if (!livekitListener) return;
+    void livekitListener.ensureRoom(sessionId).catch((error) => {
+      console.warn("LiveKit listener failed:", error);
+    });
+  };
 
   router.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok" });
@@ -38,6 +49,7 @@ export const buildRoutes = (orchestrator: AgentOrchestrator, overshoot: Overshoo
       return;
     }
 
+    ensureLiveKit(sessionId);
     await orchestrator.handlePickup(sessionId, req.body);
     res.json({ status: "accepted" });
   });
@@ -50,6 +62,7 @@ export const buildRoutes = (orchestrator: AgentOrchestrator, overshoot: Overshoo
       return;
     }
 
+    ensureLiveKit(sessionId);
     await orchestrator.handlePickup(sessionId, decision.event);
     res.json({ status: "accepted" });
   });
@@ -65,6 +78,7 @@ export const buildRoutes = (orchestrator: AgentOrchestrator, overshoot: Overshoo
       return;
     }
 
+    ensureLiveKit(sessionId);
     await orchestrator.handlePickup(sessionId, req.body.event);
     res.json({ status: "accepted" });
   });

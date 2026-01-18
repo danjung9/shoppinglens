@@ -74,7 +74,22 @@ LIVEKIT_HOST=https://<your-livekit-host>
 LIVEKIT_API_KEY=...
 LIVEKIT_API_SECRET=...
 LIVEKIT_DATA_TOPIC=shoppinglens (optional)
+LIVEKIT_INPUT_TOPIC=questions (optional)
+LIVEKIT_LISTENER_ENABLED=true (optional)
+LIVEKIT_LISTENER_IDENTITY_PREFIX=shoppinglens-backend (optional)
+LIVEKIT_LISTENER_NAME=ShoppingLens Backend (optional)
 ```
+
+### LiveKit questions (data channel)
+
+If LiveKit env vars are set, the backend will join any room after the first pickup and listen for data messages.
+Send JSON like:
+
+```json
+{ "type": "question", "question": "Is this sugar free?" }
+```
+
+If you set `LIVEKIT_INPUT_TOPIC`, the backend will only accept messages on that topic.
 
 Overshoot tuning (optional):
 
