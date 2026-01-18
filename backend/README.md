@@ -91,6 +91,45 @@ Send JSON like:
 
 If you set `LIVEKIT_INPUT_TOPIC`, the backend will only accept messages on that topic.
 
+### LiveKit voice agent (worker + dispatch)
+
+This repo includes a LiveKit Agents worker at `backend/src/agent/agent.ts`. Run it in a
+separate process, and the backend will dispatch it into the room after pickup.
+
+```bash
+cd backend
+pnpm install
+pnpm run agent
+```
+
+Env (agent + dispatcher):
+
+```
+LIVEKIT_AGENT_ENABLED=true
+LIVEKIT_AGENT_NAME=shoppinglens-voice-agent (optional)
+LIVEKIT_AGENT_LLM_MODEL=openai/gpt-4.1-mini (optional)
+LIVEKIT_AGENT_STT_MODEL=assemblyai/universal-streaming:en (optional)
+LIVEKIT_AGENT_TTS_MODEL=cartesia/sonic-3:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc (optional)
+LIVEKIT_AGENT_INSTRUCTIONS="You are ShoppingLens, a concise in-room voice assistant for shoppers." (optional)
+LIVEKIT_AGENT_GREETING= (optional)
+```
+
+The backend uses `LIVEKIT_AGENT_NAME` when calling the Agent Dispatch API, so the worker and
+backend must match on the same name.
+
+### Barebones LiveKit frontend
+
+Open `http://localhost:8080/voice-test.html` to join a room, enable mic, and trigger a pickup
+event that dispatches the agent into the room.
+
+By default, the agent uses LiveKit Cloud inference. If you need separate inference credentials:
+
+```
+LIVEKIT_INFERENCE_API_KEY=...
+LIVEKIT_INFERENCE_API_SECRET=...
+LIVEKIT_INFERENCE_URL=https://agent-gateway.livekit.cloud/v1 (optional)
+```
+
 Overshoot tuning (optional):
 
 ```

@@ -1,8 +1,11 @@
 import { Router, Request, Response } from "express";
+import { AccessToken } from "livekit-server-sdk";
 import { AgentOrchestrator } from "../agent/orchestrator.js";
 import { PickupEvent } from "../types.js";
 import { OvershootBridge } from "./overshoot.js";
 import { LiveKitQuestionListener } from "./livekitQuestions.js";
+import { LiveKitAgentDispatcher } from "./livekitAgentDispatch.js";
+import { LiveKitSessionManager } from "./livekitSession.js";
 
 const isPickupEvent = (body: unknown): body is PickupEvent => {
   if (!body || typeof body !== "object") return false;
@@ -20,6 +23,8 @@ export const buildRoutes = (
   orchestrator: AgentOrchestrator,
   overshoot: OvershootBridge,
   livekitListener?: LiveKitQuestionListener,
+  livekitDispatcher?: LiveKitAgentDispatcher,
+  livekitSessions?: LiveKitSessionManager,
 ): Router => {
   const router = Router();
   const ensureLiveKit = (sessionId: string) => {
@@ -27,6 +32,20 @@ export const buildRoutes = (
     void livekitListener.ensureRoom(sessionId).catch((error) => {
       console.warn("LiveKit listener failed:", error);
     });
+  };
+  const ensureAgentDispatch = (sessionId: string, event?: PickupEvent) => {
+    if (!livekitDispatcher) return;
+    const metadata = event ? JSON.stringify({ search_seed: event.search_seed }) : undefined;
+    void livekitDispatcher
+      .dispatch(sessionId, metadata)
+      .then((dispatched) => {
+        if (!dispatched) {
+          console.log(`LiveKit agent already dispatched for room ${sessionId}`);
+        }
+      })
+      .catch((error) => {
+        console.warn("LiveKit agent dispatch failed:", error);
+      });
   };
 
   router.get("/health", (_req: Request, res: Response) => {
@@ -42,6 +61,13 @@ export const buildRoutes = (
     });
   });
 
+  router.get("/livekit/config", (_req: Request, res: Response) => {
+    res.json({
+      host: process.env.LIVEKIT_HOST ?? "",
+      agent_name: process.env.LIVEKIT_AGENT_NAME ?? "shoppinglens-voice-agent",
+    });
+  });
+
   router.post("/sessions/:sessionId/overshoot", async (req: Request, res: Response) => {
     const { sessionId } = req.params;
     if (!isPickupEvent(req.body)) {
@@ -50,6 +76,7 @@ export const buildRoutes = (
     }
 
     ensureLiveKit(sessionId);
+    ensureAgentDispatch(sessionId, req.body);
     await orchestrator.handlePickup(sessionId, req.body);
     res.json({ status: "accepted" });
   });
@@ -63,6 +90,7 @@ export const buildRoutes = (
     }
 
     ensureLiveKit(sessionId);
+    ensureAgentDispatch(sessionId, decision.event);
     await orchestrator.handlePickup(sessionId, decision.event);
     res.json({ status: "accepted" });
   });
@@ -79,6 +107,7 @@ export const buildRoutes = (
     }
 
     ensureLiveKit(sessionId);
+    ensureAgentDispatch(sessionId, req.body.event);
     await orchestrator.handlePickup(sessionId, req.body.event);
     res.json({ status: "accepted" });
   });
@@ -95,6 +124,27 @@ export const buildRoutes = (
     res.json({ status: "accepted" });
   });
 
+  router.post("/livekit/token", async (req: Request, res: Response) => {
+    const host = process.env.LIVEKIT_HOST;
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+    if (!host || !apiKey || !apiSecret) {
+      res.status(400).json({ error: "LiveKit not configured" });
+      return;
+    }
+    const room = typeof req.body?.room === "string" ? req.body.room.trim() : "";
+    const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
+    const name = typeof req.body?.name === "string" ? req.body.name.trim() : undefined;
+    if (!room || !identity) {
+      res.status(400).json({ error: "Missing room or identity" });
+      return;
+    }
+
+    const token = new AccessToken(apiKey, apiSecret, { identity, name });
+    token.addGrant({ room, roomJoin: true, canPublish: true, canSubscribe: true, canPublishData: true });
+    res.json({ token: await token.toJwt() });
+  });
+
   router.post("/sessions/:sessionId/buy", async (req: Request, res: Response) => {
     const { sessionId } = req.params;
     const productId = typeof req.body?.product_id === "string" ? req.body.product_id : "";
@@ -109,6 +159,18 @@ export const buildRoutes = (
 
   router.post("/sessions/:sessionId/end", async (req: Request, res: Response) => {
     const { sessionId } = req.params;
+    if (livekitSessions) {
+      const identity =
+        process.env.LIVEKIT_AGENT_IDENTITY ??
+        process.env.LIVEKIT_AGENT_NAME ??
+        "shoppinglens-voice-agent";
+      try {
+        await livekitSessions.removeParticipant(sessionId, identity);
+      } catch (error) {
+        console.warn("LiveKit agent removal failed:", error);
+      }
+    }
+    livekitDispatcher?.clear(sessionId);
     await orchestrator.handleEnd(sessionId);
     res.json({ status: "ended" });
   });

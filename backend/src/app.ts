@@ -10,6 +10,8 @@ import { StreamHub } from "./services/stream.js";
 import { createLiveKitPublisherFromEnv } from "./services/livekit.js";
 import { createOvershootBridgeFromEnv } from "./services/overshoot.js";
 import { createLiveKitQuestionListenerFromEnv } from "./services/livekitQuestions.js";
+import { createLiveKitAgentDispatcherFromEnv } from "./services/livekitAgentDispatch.js";
+import { createLiveKitSessionManagerFromEnv } from "./services/livekitSession.js";
 
 export const createApp = () => {
   const app = express();
@@ -25,11 +27,13 @@ export const createApp = () => {
   const livekitListener = createLiveKitQuestionListenerFromEnv((sessionId, question) =>
     orchestrator.handleQuestion(sessionId, question),
   );
+  const livekitDispatcher = createLiveKitAgentDispatcherFromEnv();
+  const livekitSessions = createLiveKitSessionManagerFromEnv();
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   app.use(express.static(path.join(__dirname, "../public")));
-  app.use("/", buildRoutes(orchestrator, overshootBridge, livekitListener));
+  app.use("/", buildRoutes(orchestrator, overshootBridge, livekitListener, livekitDispatcher, livekitSessions));
 
   return { app, httpServer };
 };

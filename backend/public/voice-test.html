@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShoppingLens LiveKit Voice Test</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+        background: #f3f0ea;
+        color: #1e1b16;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        display: grid;
+        gap: 20px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+      .card {
+        background: #fffaf0;
+        border: 1px solid #e0d7c8;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 6px 18px rgba(30, 27, 22, 0.08);
+      }
+      label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #7a6f61;
+      }
+      input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #d6c9b6;
+        background: #fffdf8;
+        font-size: 14px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #1f6f50;
+        color: #fff;
+      }
+      button.secondary {
+        background: #e7dfd2;
+        color: #3b332a;
+      }
+      .status {
+        font-size: 14px;
+        color: #3b332a;
+      }
+      pre {
+        background: #15110c;
+        color: #f7efe4;
+        padding: 16px;
+        border-radius: 12px;
+        overflow: auto;
+        max-height: 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>LiveKit Voice Agent Test</h1>
+        <div class="status" id="status">Idle</div>
+      </header>
+
+      <section class="card">
+        <div class="row">
+          <div>
+            <label>LiveKit URL</label>
+            <input id="livekitUrl" placeholder="wss://your-project.livekit.cloud" />
+          </div>
+          <div>
+            <label>Room</label>
+            <input id="room" value="demo" />
+          </div>
+          <div>
+            <label>Identity</label>
+            <input id="identity" />
+          </div>
+          <div>
+            <label>Name</label>
+            <input id="name" value="Tester" />
+          </div>
+        </div>
+        <div style="height: 16px"></div>
+        <div class="actions">
+          <button class="primary" id="joinBtn">Join + Mic</button>
+          <button class="secondary" id="leaveBtn" disabled>Leave</button>
+          <button class="secondary" id="pickupBtn">Trigger Pickup</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <label>Agent Transcript</label>
+        <pre id="agentTranscript">Waiting...</pre>
+      </section>
+
+      <section class="card">
+        <label>Log</label>
+        <pre id="log">Waiting...</pre>
+      </section>
+    </div>
+
+    <script type="module">
+      import { Room, RoomEvent, ParticipantKind } from "https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.esm.mjs";
+
+      const statusEl = document.getElementById("status");
+      const transcriptEl = document.getElementById("agentTranscript");
+      const logEl = document.getElementById("log");
+      const livekitUrlEl = document.getElementById("livekitUrl");
+      const roomEl = document.getElementById("room");
+      const identityEl = document.getElementById("identity");
+      const nameEl = document.getElementById("name");
+      const joinBtn = document.getElementById("joinBtn");
+      const leaveBtn = document.getElementById("leaveBtn");
+      const pickupBtn = document.getElementById("pickupBtn");
+
+      let room = null;
+      let agentIdentity = null;
+
+      const log = (message) => {
+        const timestamp = new Date().toISOString();
+        logEl.textContent = `[${timestamp}] ${message}\n` + logEl.textContent;
+      };
+
+      const appendTranscript = (message) => {
+        const timestamp = new Date().toISOString();
+        transcriptEl.textContent = `[${timestamp}] ${message}\n` + transcriptEl.textContent;
+      };
+
+      const setStatus = (message) => {
+        statusEl.textContent = message;
+      };
+
+      const loadConfig = async () => {
+        try {
+          const res = await fetch("/livekit/config");
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.host) {
+            livekitUrlEl.value = data.host;
+          }
+          if (data.agent_name) {
+            agentIdentity = data.agent_name;
+          }
+        } catch {
+          // best-effort only
+        }
+      };
+
+      const ensureIdentity = () => {
+        if (identityEl.value.trim()) return;
+        identityEl.value = `tester-${Math.random().toString(36).slice(2, 8)}`;
+      };
+
+      const fetchToken = async () => {
+        const res = await fetch("/livekit/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room: roomEl.value.trim(),
+            identity: identityEl.value.trim(),
+            name: nameEl.value.trim(),
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Token request failed (${res.status})`);
+        }
+        const data = await res.json();
+        return data.token;
+      };
+
+      const connectRoom = async () => {
+        if (room) return;
+        ensureIdentity();
+        const url = livekitUrlEl.value.trim();
+        if (!url) {
+          alert("LiveKit URL is required.");
+          return;
+        }
+        setStatus("Connecting...");
+        const token = await fetchToken();
+        room = new Room();
+
+        room.on(RoomEvent.ParticipantConnected, (participant) => {
+          log(`Participant joined: ${participant.identity}`);
+        });
+        room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+          log(`Participant left: ${participant.identity}`);
+        });
+        room.on(RoomEvent.ConnectionStateChanged, (state) => {
+          log(`Room state: ${state}`);
+        });
+
+        room.on(RoomEvent.TranscriptionReceived, (segments, participant) => {
+          if (!participant) return;
+          const isAgent = participant.kind === ParticipantKind.AGENT ||
+            (agentIdentity && participant.identity === agentIdentity);
+          if (!isAgent) return;
+          const text = segments.map((segment) => segment.text).join("").trim();
+          if (!text) return;
+          appendTranscript(`${participant.identity}: ${text}`);
+        });
+
+        await room.connect(url, token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+        joinBtn.disabled = true;
+        leaveBtn.disabled = false;
+        setStatus(`Connected to ${roomEl.value.trim()}`);
+        log("Microphone enabled.");
+      };
+
+      const leaveRoom = async () => {
+        if (!room) return;
+        await room.disconnect();
+        room = null;
+        joinBtn.disabled = false;
+        leaveBtn.disabled = true;
+        setStatus("Idle");
+      };
+
+      const triggerPickup = async () => {
+        const sessionId = roomEl.value.trim();
+        if (!sessionId) {
+          alert("Room is required.");
+          return;
+        }
+        const payload = {
+          event_id: "evt-ui",
+          event_type: "PICKUP_DETECTED",
+          confidence: 0.92,
+          frame_ref: "local://voice-test",
+          search_seed: {
+            visible_text: ["Demo Item"],
+            brand_hint: "Acme",
+            category_hint: "mug",
+            visual_description: "white ceramic mug",
+          },
+        };
+        const res = await fetch(`/sessions/${sessionId}/overshoot`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          log(`Pickup failed (${res.status})`);
+          return;
+        }
+        log(`Pickup triggered for room ${sessionId}.`);
+      };
+
+      joinBtn.addEventListener("click", () => {
+        connectRoom().catch((err) => log(`Join failed: ${err.message}`));
+      });
+      leaveBtn.addEventListener("click", () => {
+        leaveRoom().catch((err) => log(`Leave failed: ${err.message}`));
+      });
+      pickupBtn.addEventListener("click", () => {
+        triggerPickup().catch((err) => log(`Pickup failed: ${err.message}`));
+      });
+
+      loadConfig();
+      ensureIdentity();
+    </script>
+  </body>
+</html>
