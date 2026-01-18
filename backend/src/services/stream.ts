@@ -41,6 +41,14 @@ export class StreamHub implements StreamPublisher {
     });
   }
 
+  markRoomActive(sessionId: string): void {
+    this.livekit?.markRoomActive(sessionId);
+  }
+
+  markRoomInactive(sessionId: string): void {
+    this.livekit?.markRoomInactive(sessionId);
+  }
+
   broadcast(sessionId: string, payload: AgentPayload): void {
     const sockets = this.sessions.get(sessionId);
     const message = JSON.stringify(payload);

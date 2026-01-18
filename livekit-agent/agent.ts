@@ -10,10 +10,13 @@ config({ path: resolve(__dirname, "../.env") });
 // Also load local .env for LiveKit credentials
 config({ path: resolve(__dirname, ".env") });
 
+if (!process.env.LIVEKIT_URL && process.env.LIVEKIT_HOST) {
+  process.env.LIVEKIT_URL = process.env.LIVEKIT_HOST;
+  console.log("[Agent] LIVEKIT_URL not set, using LIVEKIT_HOST");
+}
+
 import { WorkerOptions, cli, defineAgent, JobContext, JobProcess, llm, voice } from "@livekit/agents";
 import { RoomEvent } from "@livekit/rtc-node";
-import * as silero from "@livekit/agents-plugin-silero";
-import * as livekit from "@livekit/agents-plugin-livekit";
 import * as google from "@livekit/agents-plugin-google";
 import { z } from "zod";
 
@@ -82,15 +85,23 @@ function payloadToSpeech(payload: AgentPayload): string {
     case "ShoppingSummary":
       return `${payload.aiInsight} The product ${payload.productName} by ${payload.brand} is priced at ${payload.detectedPrice}. Value score: ${payload.valueScore}.`;
     case "ResearchResults":
-      return `Found ${payload.top_match.title} priced at $${payload.top_match.price.amount} ${payload.top_match.price.currency}. Found ${payload.alternatives.length} alternative options.`;
+      return `I found ${payload.top_match.title}. I see ${payload.alternatives.length} alternatives and will summarize pricing and recommendations next.`;
     case "Info":
-      return payload.message;
+      return "";
     case "AISummary":
       return `${payload.summary} Pros: ${payload.pros.join(", ")}. Cons: ${payload.cons.join(", ")}. Best for: ${payload.best_for.join(", ")}.`;
     default:
       return "Received response from shopping agent.";
   }
 }
+
+const isSpeakablePayload = (payload: AgentPayload): boolean => {
+  return (
+    payload.type === "ResearchResults" ||
+    payload.type === "ShoppingSummary" ||
+    payload.type === "AISummary"
+  );
+};
 
 /**
  * Calls the backend agent API and returns the spoken response
@@ -122,7 +133,11 @@ async function callBackendAgent(
 
     console.log(`[Tool] Got ${data.payloads.length} payloads from backend`);
     // Combine all payloads into a single spoken response
-    return data.payloads.map(payloadToSpeech).join(" ");
+    return data.payloads
+      .filter(isSpeakablePayload)
+      .map(payloadToSpeech)
+      .filter((speech) => speech.trim().length > 0)
+      .join(" ");
   } catch (error) {
     console.error(`[Tool] Failed to call backend:`, error);
     return `Failed to call shopping agent: ${error instanceof Error ? error.message : String(error)}`;
@@ -130,9 +145,8 @@ async function callBackendAgent(
 }
 
 export default defineAgent({
-  prewarm: async (proc: JobProcess) => {
-    // Load VAD model once per worker
-    proc.userData.vad = await silero.VAD.load();
+  prewarm: async (_proc: JobProcess) => {
+    // No-op: avoid native inference model initialization (prevents VAD/turn-detector crashes).
   },
 
   entry: async (ctx: JobContext) => {
@@ -247,8 +261,7 @@ Be conversational and friendly. After calling the shopping agent tool, summarize
           voiceName: geminiVoice,
           apiKey: geminiKey,
         }),
-        vad: ctx.proc.userData.vad as silero.VAD,
-        turnDetection: new livekit.turnDetector.MultilingualModel(),
+        turnDetection: "realtime_llm",
       });
 
       // Start the voice session
@@ -270,7 +283,13 @@ Be conversational and friendly. After calling the shopping agent tool, summarize
         try {
           const text = new TextDecoder().decode(payload);
           const parsed = JSON.parse(text) as AgentPayload;
+          if (!isSpeakablePayload(parsed)) {
+            return;
+          }
           const speech = payloadToSpeech(parsed);
+          if (!speech.trim()) {
+            return;
+          }
           console.log(
             `[Agent] Received LiveKit data${participant ? ` from ${participant.identity}` : ""}: ${parsed.type}`
           );

@@ -14,6 +14,7 @@ const SESSION_ID = `session-${Date.now()}-${Math.random().toString(36).slice(2, 
 export default function App() {
   const cameraRef = useRef<CameraBackgroundHandle>(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const autoConnectAttempted = useRef(false);
 
   // Backend WebSocket connection
   const {
@@ -33,6 +34,12 @@ export default function App() {
     disconnect: disconnectVoice,
     toggleMute,
   } = useLiveKitVoice(SESSION_ID);
+
+  useEffect(() => {
+    if (autoConnectAttempted.current) return;
+    autoConnectAttempted.current = true;
+    void connectVoice();
+  }, [connectVoice]);
 
   // Product detection callback
   const onPickupDetected = useCallback(() => {

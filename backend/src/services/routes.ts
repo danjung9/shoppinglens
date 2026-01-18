@@ -139,6 +139,7 @@ export const buildRoutes = (
 
     const url = process.env.LIVEKIT_URL || process.env.LIVEKIT_HOST || "";
     console.log(`[LIVEKIT] Token generated. URL: ${url}`);
+    streamHub.markRoomActive(room);
 
     // Auto-dispatch the agent to this room
     const dispatchClient = createLiveKitDispatchClientFromEnv();
