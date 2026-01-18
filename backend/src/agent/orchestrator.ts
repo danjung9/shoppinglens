@@ -9,7 +9,7 @@ import {
 } from "../types.js";
 import { SessionStore } from "../state/sessionStore.js";
 import { Toolset } from "../tools/index.js";
-import { StreamHub } from "../services/stream.js";
+import { StreamPublisher } from "../services/stream.js";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage } from "@langchain/core/messages";
 
@@ -195,7 +195,7 @@ const toInfo = (sessionId: string, message: string, threadId?: string): InfoPayl
 export class AgentOrchestrator {
   constructor(
     private store: SessionStore,
-    private streamHub: StreamHub,
+    private streamHub: StreamPublisher,
     private tools: Toolset,
   ) {}
 
@@ -220,7 +220,21 @@ export class AgentOrchestrator {
   async handleQuestion(sessionId: string, question: string): Promise<void> {
     const thread = this.store.getActiveThread(sessionId);
     if (!thread) {
-      await this.emit(toInfo(sessionId, "No active product. Pick up an item first."));
+      const query = question.trim();
+      const newThread = this.store.startNewThread(sessionId, query, undefined);
+      await this.emit(toInfo(sessionId, "Starting research from your question.", newThread.thread_id));
+
+      const research = await this.runResearch(sessionId, newThread.thread_id, query, undefined);
+      await this.emit(research);
+
+      const summary = await generateShoppingSummaryWithLLM(
+        sessionId,
+        newThread.thread_id,
+        research.top_match,
+        research.alternatives,
+        undefined,
+      );
+      await this.emit(summary);
       return;
     }
 

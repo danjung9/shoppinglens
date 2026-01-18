@@ -3,7 +3,11 @@ import WebSocket, { WebSocketServer } from "ws";
 import { AgentPayload } from "../types.js";
 import { LiveKitPublisher } from "./livekit.js";
 
-export class StreamHub {
+export type StreamPublisher = {
+  broadcast(sessionId: string, payload: AgentPayload): void;
+};
+
+export class StreamHub implements StreamPublisher {
   private wss: WebSocketServer;
   private sessions = new Map<string, Set<WebSocket>>();
 

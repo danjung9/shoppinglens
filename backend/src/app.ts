@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer } from "node:http";
 import { buildRoutes } from "./services/routes.js";
-import { createStubTools } from "./tools/index.js";
+import { createAgentTools } from "./tools/index.js";
 import { SessionStore } from "./state/sessionStore.js";
 import { AgentOrchestrator } from "./agent/orchestrator.js";
 import { StreamHub } from "./services/stream.js";
@@ -17,10 +17,10 @@ export const createApp = () => {
   const streamHub = new StreamHub(httpServer, livekitPublisher);
   const overshootBridge = createOvershootBridgeFromEnv();
   const store = new SessionStore();
-  const tools = createStubTools();
+  const tools = createAgentTools();
   const orchestrator = new AgentOrchestrator(store, streamHub, tools);
 
-  app.use("/", buildRoutes(orchestrator, overshootBridge));
+  app.use("/", buildRoutes(orchestrator, overshootBridge, streamHub, store, tools));
 
   return { app, httpServer };
 };

@@ -1,4 +1,9 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import { resolve } from "path";
+
+// Load .env from root directory
+config({ path: resolve(process.cwd(), "../.env") });
+
 import { createApp } from "./app.js";
 
 const port = Number(process.env.PORT ?? 8080);

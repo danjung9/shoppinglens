@@ -1,3 +1,6 @@
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { HumanMessage } from "@langchain/core/messages";
+import { z } from "zod";
 import { ExtractedProduct, Price, ProductSpec, SearchResult } from "../types.js";
 
 export type Toolset = {
@@ -14,6 +17,15 @@ const makeSpecs = (query: string): ProductSpec[] => [
   { key: "Material", value: "Unknown" },
   { key: "Query", value: query },
 ];
+
+const stripHtml = (html: string): string => {
+  return html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 type GeminiSearchChunk = {
   web?: {
@@ -81,6 +93,126 @@ const runGeminiSearch = async (query: string): Promise<SearchResult[]> => {
   } finally {
     clearTimeout(timeout);
   }
+};
+
+const ExtractedProductSchema = z.object({
+  title: z.string(),
+  image_url: z.string().optional().default(""),
+  price: z.object({
+    amount: z.number(),
+    currency: z.string().default("USD"),
+  }),
+  specs: z.array(
+    z.object({
+      key: z.string(),
+      value: z.string(),
+    })
+  ),
+});
+
+const buildExtractionModel = (apiKey: string) =>
+  new ChatGoogleGenerativeAI({
+    model: process.env.GEMINI_MODEL || process.env.gemini_model || "gemini-1.5-flash",
+    temperature: 0.1,
+    apiKey,
+    maxRetries: 1,
+  });
+
+export const createAgentTools = (): Toolset => {
+  return {
+    async searchWeb(query: string) {
+      return runGeminiSearch(query);
+    },
+
+    async fetchPage(url: string) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      try {
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "shoppinglens-bot/1.0",
+          },
+        });
+        if (!response.ok) {
+          return "";
+        }
+        return await response.text();
+      } catch {
+        return "";
+      } finally {
+        clearTimeout(timeout);
+      }
+    },
+
+    async extractProductFields(html: string, sourceUrl: string) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return null;
+      }
+
+      const text = stripHtml(html).slice(0, 4000);
+      if (!text) {
+        return null;
+      }
+
+      try {
+        const model = buildExtractionModel(apiKey).withStructuredOutput(ExtractedProductSchema, {
+          name: "extracted_product",
+        });
+        const prompt = `Extract the primary product details from the content below.
+Return title, image_url if present, price (numeric amount + currency), and key specs.
+If price is missing, set amount to 0 and currency to USD.
+
+URL: ${sourceUrl}
+
+Content:
+${text}`;
+
+        const extracted = await model.invoke([new HumanMessage(prompt)]);
+        return {
+          ...extracted,
+          image_url: extracted.image_url || "https://placehold.co/600x600",
+          source_url: sourceUrl,
+        };
+      } catch {
+        return null;
+      }
+    },
+
+    async compareProducts(productA: ExtractedProduct, productB: ExtractedProduct) {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        if (productA.price.amount <= productB.price.amount) {
+          return "Lower price with similar baseline specs.";
+        }
+        return "Higher price but could indicate premium build.";
+      }
+
+      try {
+        const model = buildExtractionModel(apiKey);
+        const prompt = `Compare these two products and explain in 1-2 sentences why the alternative might be better or worse.
+
+Product A: ${productA.title} ($${productA.price.amount} ${productA.price.currency})
+Product B: ${productB.title} ($${productB.price.amount} ${productB.price.currency})
+
+Focus on price and any obvious differences in title.`;
+        const response = await model.invoke([new HumanMessage(prompt)]);
+        return typeof response.content === "string"
+          ? response.content.trim()
+          : JSON.stringify(response.content);
+      } catch {
+        if (productA.price.amount <= productB.price.amount) {
+          return "Lower price with similar baseline specs.";
+        }
+        return "Higher price but could indicate premium build.";
+      }
+    },
+
+    async buyItem(productId: string) {
+      return { status: "ok", message: `Purchase flow started for ${productId}` };
+    },
+  };
 };
 
 export const createStubTools = (): Toolset => {
