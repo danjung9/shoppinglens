@@ -1,15 +1,30 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { tool } from "@langchain/core/tools";
+import { HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { SearchResult } from "../types.js";
+
+const stripHtml = (html: string): string => {
+  return html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
 
 /**
  * Create a search tool for the ReAct agent
  * This is the first tool we're implementing
  */
 export function createSearchTool(
-  searchFunction: (query: string) => Promise<SearchResult[]>
+  searchFunction: (query: string) => Promise<SearchResult[]>,
+  options?: {
+    fetchPage?: (url: string) => Promise<string>;
+    geminiApiKey?: string;
+    maxPages?: number;
+  }
 ) {
   return tool(
     async ({ query }: { query: string }) => {
@@ -21,13 +36,61 @@ export function createSearchTool(
           return "No search results found.";
         }
 
+        let synthesizedAnswer: string | null = null;
+        if (options?.fetchPage && options?.geminiApiKey) {
+          const maxPages = options.maxPages ?? 3;
+          const pages = await Promise.all(
+            results.slice(0, maxPages).map(async (result) => {
+              const html = await options.fetchPage?.(result.url);
+              const text = html ? stripHtml(html).slice(0, 4000) : "";
+              return {
+                title: result.title,
+                url: result.url,
+                text,
+              };
+            })
+          );
+
+          const sourcesText = pages
+            .map(
+              (page, index) =>
+                `Source ${index + 1}: ${page.title}\nURL: ${page.url}\nContent: ${page.text || "No content fetched"}`
+            )
+            .join("\n\n");
+
+          const model = new ChatGoogleGenerativeAI({
+            model: process.env.GEMINI_MODEL || process.env.gemini_model || "gemini-1.5-flash",
+            temperature: 0.2,
+            apiKey: options.geminiApiKey,
+            maxRetries: 1,
+          });
+
+          const prompt = `Answer the question using ONLY the sources below. If the sources don't contain the answer, say so.
+
+Question: ${query}
+
+${sourcesText}
+
+Respond in 2-4 sentences. Include citations as [1], [2], etc.`;
+
+          const response = await model.invoke([new HumanMessage(prompt)]);
+          synthesizedAnswer =
+            typeof response.content === "string"
+              ? response.content
+              : JSON.stringify(response.content);
+        }
+
         const formattedResults = results
           .map((result, index) => {
             return `${index + 1}. ${result.title}\n   URL: ${result.url}\n   ${result.snippet ? `Snippet: ${result.snippet}` : ""}`;
           })
           .join("\n\n");
 
-        return `Search results for "${query}":\n\n${formattedResults}`;
+        if (synthesizedAnswer) {
+          return `Answer:\n${synthesizedAnswer}\n\nSources:\n${formattedResults}`;
+        }
+
+        return `Sources for "${query}":\n\n${formattedResults}`;
       } catch (error) {
         return `Error performing search: ${error instanceof Error ? error.message : String(error)}`;
       }

@@ -35,7 +35,10 @@ async function main() {
 
   // Create the search tool using the existing stub tools
   const stubTools = createStubTools();
-  const searchTool = createSearchTool(stubTools.searchWeb);
+  const searchTool = createSearchTool(stubTools.searchWeb, {
+    fetchPage: stubTools.fetchPage,
+    geminiApiKey,
+  });
 
   // Create the ReAct agent with the search tool and LangSmith tracing
   const agent = createReActAgent([searchTool], geminiApiKey, {

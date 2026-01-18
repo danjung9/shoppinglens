@@ -90,7 +90,24 @@ export const createStubTools = (): Toolset => {
     },
 
     async fetchPage(url: string) {
-      return `<!doctype html><html><head><title>${url}</title></head><body>Mock page for ${url}</body></html>`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      try {
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "shoppinglens-bot/1.0",
+          },
+        });
+        if (!response.ok) {
+          return "";
+        }
+        return await response.text();
+      } catch {
+        return "";
+      } finally {
+        clearTimeout(timeout);
+      }
     },
 
     async extractProductFields(_html: string, sourceUrl: string) {
