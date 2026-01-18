@@ -37,11 +37,15 @@ type GeminiSearchChunk = {
 const runGeminiSearch = async (query: string): Promise<SearchResult[]> => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
+    console.log("[SEARCH] ERROR: GEMINI_API_KEY not set in environment!");
     return [];
   }
 
-  const model = process.env.GEMINI_MODEL || process.env.gemini_model || "gemini-1.5-flash";
+  const model = process.env.GEMINI_MODEL || process.env.gemini_model || "gemini-2.0-flash";
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  console.log(`[SEARCH] Using model: ${model}`);
+  console.log(`[SEARCH] Query: "${query.slice(0, 100)}..."`);
+  
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
 
@@ -58,7 +62,7 @@ const runGeminiSearch = async (query: string): Promise<SearchResult[]> => {
             role: "user",
             parts: [
               {
-                text: `Search the web for: ${query}. Return sources with titles and URLs.`,
+                text: `Search for "${query}" prices on shopping sites like Amazon, Best Buy, Walmart, Target, B&H Photo, Newegg. Find product listings with prices.`,
               },
             ],
           },
@@ -71,12 +75,31 @@ const runGeminiSearch = async (query: string): Promise<SearchResult[]> => {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.log(`[SEARCH] API error: ${response.status} - ${errorText}`);
       return [];
     }
 
     const data = await response.json();
-    const chunks: GeminiSearchChunk[] =
-      data?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+    console.log(`[SEARCH] API response received`);
+    
+    // Log the grounding metadata structure to understand the response
+    const groundingMetadata = data?.candidates?.[0]?.groundingMetadata;
+    if (groundingMetadata) {
+      console.log(`[SEARCH] Grounding metadata keys:`, Object.keys(groundingMetadata));
+      // Check for search entry point which has real URLs
+      if (groundingMetadata.searchEntryPoint?.renderedContent) {
+        console.log(`[SEARCH] Has searchEntryPoint with rendered content`);
+      }
+    }
+    
+    const chunks: GeminiSearchChunk[] = groundingMetadata?.groundingChunks ?? [];
+    console.log(`[SEARCH] Grounding chunks found: ${chunks.length}`);
+    
+    // Log first chunk to see URL structure
+    if (chunks.length > 0) {
+      console.log(`[SEARCH] First chunk URL: ${chunks[0]?.web?.uri}`);
+    }
 
     const results = chunks
       .map((chunk: GeminiSearchChunk) => {
@@ -87,8 +110,10 @@ const runGeminiSearch = async (query: string): Promise<SearchResult[]> => {
       })
       .filter((item: SearchResult | null): item is SearchResult => Boolean(item));
 
+    console.log(`[SEARCH] Final results: ${results.length}`);
     return results;
-  } catch {
+  } catch (error) {
+    console.log(`[SEARCH] Exception:`, error);
     return [];
   } finally {
     clearTimeout(timeout);

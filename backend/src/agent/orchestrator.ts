@@ -14,14 +14,38 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage } from "@langchain/core/messages";
 
 const buildQuery = (seed: SearchSeed): string => {
-  const parts = [
-    ...(seed.visible_text ?? []),
-    seed.brand_hint,
-    seed.category_hint,
-    seed.visual_description,
-  ].filter((value): value is string => Boolean(value && value.trim()));
-  if (parts.length === 0) return "unknown product";
-  return parts.join(" ");
+  // Prioritize: visible_text (actual product text) > brand + category > visual description
+  const productTerms: string[] = [];
+  
+  // Add visible text (most important - actual text on the product)
+  if (seed.visible_text && seed.visible_text.length > 0) {
+    productTerms.push(...seed.visible_text);
+  }
+  
+  // Add brand if not already in visible text
+  if (seed.brand_hint && !productTerms.some(t => t.toLowerCase().includes(seed.brand_hint!.toLowerCase()))) {
+    productTerms.push(seed.brand_hint);
+  }
+  
+  // Add category for context
+  if (seed.category_hint) {
+    productTerms.push(seed.category_hint);
+  }
+  
+  // Only use visual description if we have nothing else
+  if (productTerms.length === 0 && seed.visual_description) {
+    // Extract key product terms from description, skip generic words
+    const desc = seed.visual_description.toLowerCase();
+    const skipWords = ['person', 'holding', 'hand', 'someone', 'background', 'table', 'a', 'the', 'is', 'with', 'on', 'in'];
+    const words = seed.visual_description.split(/\s+/).filter(w => !skipWords.includes(w.toLowerCase()) && w.length > 2);
+    productTerms.push(...words.slice(0, 5));
+  }
+  
+  if (productTerms.length === 0) return "product";
+  
+  // Build a clean product search query
+  const query = productTerms.slice(0, 6).join(" ");
+  return `${query} price`;
 };
 
 const formatPrice = (price: ExtractedProduct["price"]): string => {
@@ -39,6 +63,18 @@ const extractSite = (url?: string, fallback?: string): string => {
   if (!url) return fallback ?? "Unknown";
   try {
     const host = new URL(url).hostname.replace(/^www\./, "");
+    // Filter out Google's internal URLs
+    if (host.includes('google.com') || host.includes('vertexaisearch')) {
+      return fallback ?? "Online Retailer";
+    }
+    // Extract friendly name from common retailers
+    if (host.includes('amazon')) return "Amazon";
+    if (host.includes('bestbuy')) return "Best Buy";
+    if (host.includes('walmart')) return "Walmart";
+    if (host.includes('target')) return "Target";
+    if (host.includes('ebay')) return "eBay";
+    if (host.includes('newegg')) return "Newegg";
+    if (host.includes('bhphoto') || host.includes('b&h')) return "B&H Photo";
     return host || fallback || "Unknown";
   } catch {
     return fallback ?? "Unknown";
@@ -61,11 +97,17 @@ const makeShoppingSummary = (
   seed?: SearchSeed,
 ): ShoppingSummaryPayload => {
   const detectedPrice = formatPrice(product.price);
-  const competitorPrices = alternatives.map((alt) => ({
+  
+  // Filter out alternatives with $0 or invalid prices
+  const validAlternatives = alternatives.filter(
+    (alt) => alt.price.amount > 0 && Number.isFinite(alt.price.amount)
+  );
+  
+  const competitorPrices = validAlternatives.map((alt) => ({
     site: extractSite(alt.source_url, alt.title),
     price: formatPrice(alt.price),
   }));
-  const numericCompetitors = alternatives
+  const numericCompetitors = validAlternatives
     .map((alt) => alt.price.amount)
     .filter((amount) => Number.isFinite(amount));
   const valueScore = computeValueScore(product.price.amount, numericCompetitors);
@@ -200,13 +242,30 @@ export class AgentOrchestrator {
   ) {}
 
   async handlePickup(sessionId: string, event: PickupEvent): Promise<void> {
+    console.log(`\n${"=".repeat(60)}`);
+    console.log(`[ORCHESTRATOR] handlePickup started`);
+    console.log(`  Session ID: ${sessionId}`);
+    console.log(`  Event ID: ${event.event_id}`);
+    console.log(`  Confidence: ${event.confidence}`);
+    console.log(`  Search seed:`, JSON.stringify(event.search_seed, null, 2));
+    
     const query = buildQuery(event.search_seed);
+    console.log(`[ORCHESTRATOR] Built query: "${query}"`);
+    
     const thread = this.store.startNewThread(sessionId, query, event.search_seed);
+    console.log(`[ORCHESTRATOR] Created thread: ${thread.thread_id}`);
+    
     await this.emit(toInfo(sessionId, "Pickup detected. Starting research.", thread.thread_id));
+    console.log(`[ORCHESTRATOR] Emitted Info: "Pickup detected. Starting research."`);
 
+    console.log(`[ORCHESTRATOR] Running research...`);
     const research = await this.runResearch(sessionId, thread.thread_id, query, event.search_seed);
+    console.log(`[ORCHESTRATOR] Research completed. Top match: "${research.top_match.title}"`);
+    console.log(`[ORCHESTRATOR] Alternatives found: ${research.alternatives.length}`);
     await this.emit(research);
+    console.log(`[ORCHESTRATOR] Emitted ResearchResults`);
 
+    console.log(`[ORCHESTRATOR] Generating shopping summary with LLM...`);
     const summary = await generateShoppingSummaryWithLLM(
       sessionId,
       thread.thread_id,
@@ -214,7 +273,10 @@ export class AgentOrchestrator {
       research.alternatives,
       event.search_seed,
     );
+    console.log(`[ORCHESTRATOR] Summary generated:`, JSON.stringify(summary, null, 2));
     await this.emit(summary);
+    console.log(`[ORCHESTRATOR] Emitted ShoppingSummary`);
+    console.log(`${"=".repeat(60)}\n`);
   }
 
   async handleQuestion(sessionId: string, question: string): Promise<void> {
@@ -279,13 +341,28 @@ export class AgentOrchestrator {
     query: string,
     searchSeed?: SearchSeed,
   ): Promise<ResearchResultsPayload> {
+    console.log(`[RESEARCH] Starting web search for: "${query}"`);
     const searchResults = await this.tools.searchWeb(query);
+    console.log(`[RESEARCH] Web search returned ${searchResults.length} results`);
+    searchResults.slice(0, 3).forEach((r, i) => {
+      console.log(`  ${i + 1}. ${r.title} - ${r.url}`);
+    });
+    
     const top = searchResults[0];
     let product: ExtractedProduct | null = null;
 
     if (top) {
+      console.log(`[RESEARCH] Fetching page: ${top.url}`);
       const html = await this.tools.fetchPage(top.url);
+      console.log(`[RESEARCH] Page fetched (${html.length} chars). Extracting product fields...`);
       product = await this.tools.extractProductFields(html, top.url);
+      if (product) {
+        console.log(`[RESEARCH] Extracted product: ${product.title} - ${formatPrice(product.price)}`);
+      } else {
+        console.log(`[RESEARCH] Failed to extract product fields`);
+      }
+    } else {
+      console.log(`[RESEARCH] No search results found!`);
     }
 
     const fallbackProduct: ExtractedProduct = {
@@ -297,25 +374,36 @@ export class AgentOrchestrator {
     };
 
     const topMatch = product ?? fallbackProduct;
+    console.log(`[RESEARCH] Top match: "${topMatch.title}" @ ${formatPrice(topMatch.price)}`);
 
+    console.log(`[RESEARCH] Processing ${Math.min(searchResults.length - 1, 3)} alternatives...`);
     const alternatives = await Promise.all(
       searchResults.slice(1, 4).map(async (result) => {
-        const reason = topMatch ? await this.tools.compareProducts(topMatch, {
-          title: result.title,
-          image_url: "https://placehold.co/300x300",
-          price: { amount: 29.99, currency: "USD" },
-          specs: [],
-          source_url: result.url,
-        }) : "Alternative match";
+        // Fetch and extract real price from each competitor page
+        let altProduct: ExtractedProduct | null = null;
+        try {
+          const altHtml = await this.tools.fetchPage(result.url);
+          if (altHtml) {
+            altProduct = await this.tools.extractProductFields(altHtml, result.url);
+            console.log(`[RESEARCH] Alternative "${result.title.slice(0, 40)}..." price: $${altProduct?.price.amount ?? 'N/A'}`);
+          }
+        } catch (err) {
+          console.log(`[RESEARCH] Failed to fetch alternative: ${result.url}`);
+        }
+        
+        const altPrice = altProduct?.price ?? { amount: 0, currency: "USD" };
+        const reason = topMatch && altProduct ? await this.tools.compareProducts(topMatch, altProduct) : "Alternative product";
+        
         return {
-          title: result.title,
-          price: { amount: 29.99, currency: "USD" },
-          image_url: "https://placehold.co/300x300",
+          title: altProduct?.title ?? result.title,
+          price: altPrice,
+          image_url: altProduct?.image_url ?? "https://placehold.co/300x300",
           reason,
           source_url: result.url,
         };
       }),
     );
+    console.log(`[RESEARCH] Alternatives processed: ${alternatives.length}`);
 
     const payload: ResearchResultsPayload = {
       type: "ResearchResults",

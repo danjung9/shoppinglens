@@ -1,12 +1,92 @@
 import { Router, Request, Response } from "express";
 import { AgentOrchestrator } from "../agent/orchestrator.js";
 import { PickupEvent } from "../types.js";
-import { OvershootBridge } from "./overshoot.js";
+import { OvershootBridge, OvershootPickupOutput } from "./overshoot.js";
 import { PayloadCollector } from "./payloadCollector.js";
 import { StreamHub } from "./stream.js";
 import { SessionStore } from "../state/sessionStore.js";
 import { Toolset } from "../tools/index.js";
 import { createLiveKitDispatchClientFromEnv, generateLiveKitToken } from "./livekit.js";
+
+// Gemini Vision-based product detection
+async function detectProductWithGemini(base64Frame: string): Promise<OvershootPickupOutput> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.log("[DETECT] No GEMINI_API_KEY, returning no detection");
+    return { pickup_detected: false, confidence: 0 };
+  }
+
+  const model = "gemini-2.0-flash";
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  // Remove data URL prefix if present
+  const imageData = base64Frame.replace(/^data:image\/[a-z]+;base64,/, "");
+
+  const prompt = `You are a product identification assistant. Analyze this image to identify any product being held or shown.
+
+FOCUS ON:
+1. Read ANY text visible on the product: brand name, model number, product name, specs
+2. Identify the brand (Apple, Samsung, Sony, Nike, etc.)
+3. Identify the product category (smartphone, headphones, laptop, shoes, etc.)
+
+If a product is clearly visible:
+- pickup_detected: true
+- confidence: how clear/certain (0.0-1.0)
+- visible_text: ALL readable text from the product ["Samsung", "Galaxy S24", "256GB", etc.]
+- brand_hint: the brand name
+- category_hint: product type (be specific: "wireless headphones" not just "electronics")
+- visual_description: SHORT product name like "Samsung Galaxy S24 smartphone" (NOT "a person holding...")
+
+If no product visible (just person, background, unclear):
+- pickup_detected: false
+- confidence: 0
+
+Return ONLY JSON:
+{"pickup_detected": boolean, "confidence": number, "visible_text": string[], "brand_hint": string, "category_hint": string, "visual_description": string}`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: "image/jpeg", data: imageData } }
+          ]
+        }],
+        generationConfig: { temperature: 0.1 }
+      }),
+    });
+
+    if (!response.ok) {
+      console.log(`[DETECT] API error: ${response.status}`);
+      return { pickup_detected: false, confidence: 0 };
+    }
+
+    const data = await response.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    
+    // Parse JSON from response (handle markdown code blocks)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        pickup_detected: Boolean(parsed.pickup_detected),
+        confidence: Number(parsed.confidence) || 0,
+        visible_text: Array.isArray(parsed.visible_text) ? parsed.visible_text : [],
+        brand_hint: parsed.brand_hint || undefined,
+        category_hint: parsed.category_hint || undefined,
+        visual_description: parsed.visual_description || undefined,
+      };
+    }
+    
+    return { pickup_detected: false, confidence: 0 };
+  } catch (error) {
+    console.error("[DETECT] Error:", error);
+    return { pickup_detected: false, confidence: 0 };
+  }
+}
 
 const isPickupEvent = (body: unknown): body is PickupEvent => {
   if (!body || typeof body !== "object") return false;
@@ -43,6 +123,8 @@ export const buildRoutes = (
     const room = typeof req.query.room === "string" ? req.query.room : "";
     const participant = typeof req.query.participant === "string" ? req.query.participant : `user-${Date.now()}`;
 
+    console.log(`[LIVEKIT] Token request for room: ${room}, participant: ${participant}`);
+
     if (!room) {
       res.status(400).json({ error: "Missing room parameter" });
       return;
@@ -50,13 +132,30 @@ export const buildRoutes = (
 
     const token = await generateLiveKitToken(room, participant);
     if (!token) {
+      console.log(`[LIVEKIT] Token generation failed - LiveKit not configured`);
       res.status(500).json({ error: "LiveKit not configured" });
       return;
     }
 
+    const url = process.env.LIVEKIT_URL || process.env.LIVEKIT_HOST || "";
+    console.log(`[LIVEKIT] Token generated. URL: ${url}`);
+
+    // Auto-dispatch the agent to this room
+    const dispatchClient = createLiveKitDispatchClientFromEnv();
+    if (dispatchClient) {
+      try {
+        console.log(`[LIVEKIT] Dispatching agent to room: ${room}`);
+        await dispatchClient.createDispatch(room, "shoppinglens", {});
+        console.log(`[LIVEKIT] Agent dispatched successfully`);
+      } catch (err: any) {
+        // It's OK if dispatch fails (agent might already be in room or not running)
+        console.log(`[LIVEKIT] Agent dispatch info: ${err.message || err}`);
+      }
+    }
+
     res.json({
       token,
-      url: process.env.LIVEKIT_URL || process.env.LIVEKIT_HOST || "",
+      url,
       room,
       participant,
     });
@@ -104,15 +203,68 @@ export const buildRoutes = (
     });
   });
 
+  // Endpoint for frontend to send video frames for product detection
+  router.post("/sessions/:sessionId/frame", async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+    const { frame } = req.body; // base64 encoded image
+    
+    if (!frame || typeof frame !== "string") {
+      res.status(400).json({ error: "Missing frame data" });
+      return;
+    }
+
+    console.log(`[ROUTE] POST /sessions/${sessionId}/frame - analyzing...`);
+    
+    try {
+      // Use Gemini Vision to detect product
+      const detection = await detectProductWithGemini(frame);
+      console.log(`[ROUTE] Detection result:`, detection);
+      
+      if (detection.pickup_detected && detection.confidence >= 0.7) {
+        // Process through overshoot bridge for debouncing
+        const decision = overshoot.handle(sessionId, {
+          result: JSON.stringify(detection),
+          frame_ref: `frame-${Date.now()}`,
+        });
+        
+        if (decision.shouldEmit) {
+          console.log(`[ROUTE] Product detected! Triggering research...`);
+          await orchestrator.handlePickup(sessionId, decision.event);
+          res.json({ status: "pickup_detected", detection });
+          return;
+        } else {
+          res.json({ status: "debounced", reason: decision.reason });
+          return;
+        }
+      }
+      
+      res.json({ status: "no_product", detection });
+    } catch (error) {
+      console.error(`[ROUTE] Frame analysis error:`, error);
+      res.status(500).json({ error: "Failed to analyze frame" });
+    }
+  });
+
   router.post("/sessions/:sessionId/overshoot", async (req: Request, res: Response) => {
     const { sessionId } = req.params;
+    console.log(`\n[ROUTE] POST /sessions/${sessionId}/overshoot`);
+    console.log(`[ROUTE] Body:`, JSON.stringify(req.body, null, 2));
+    
     if (!isPickupEvent(req.body)) {
+      console.log(`[ROUTE] Invalid pickup event - validation failed`);
       res.status(400).json({ error: "Invalid pickup event" });
       return;
     }
 
-    await orchestrator.handlePickup(sessionId, req.body);
-    res.json({ status: "accepted" });
+    console.log(`[ROUTE] Valid pickup event, calling orchestrator...`);
+    try {
+      await orchestrator.handlePickup(sessionId, req.body);
+      console.log(`[ROUTE] Orchestrator completed successfully`);
+      res.json({ status: "accepted" });
+    } catch (error) {
+      console.error(`[ROUTE] Orchestrator error:`, error);
+      res.status(500).json({ error: "Failed to process pickup event" });
+    }
   });
 
   router.post("/sessions/:sessionId/overshoot/result", async (req: Request, res: Response) => {

@@ -13,10 +13,15 @@ export class StreamHub implements StreamPublisher {
 
   constructor(server: Server, private livekit?: LiveKitPublisher) {
     this.wss = new WebSocketServer({ server, path: "/ws" });
+    console.log(`[STREAM] WebSocket server initialized at /ws`);
+    
     this.wss.on("connection", (socket, request) => {
       const url = new URL(request.url ?? "", `http://${request.headers.host}`);
       const sessionId = url.searchParams.get("sessionId");
+      console.log(`[STREAM] New WebSocket connection - sessionId: ${sessionId}`);
+      
       if (!sessionId) {
+        console.log(`[STREAM] Closing connection - missing sessionId`);
         socket.close(1008, "Missing sessionId");
         return;
       }
@@ -24,12 +29,14 @@ export class StreamHub implements StreamPublisher {
       const set = this.sessions.get(sessionId) ?? new Set<WebSocket>();
       set.add(socket);
       this.sessions.set(sessionId, set);
+      console.log(`[STREAM] Session ${sessionId} now has ${set.size} connection(s)`);
 
       socket.on("close", () => {
         const current = this.sessions.get(sessionId);
         if (!current) return;
         current.delete(socket);
         if (current.size === 0) this.sessions.delete(sessionId);
+        console.log(`[STREAM] WebSocket closed for session ${sessionId}`);
       });
     });
   }
@@ -37,17 +44,25 @@ export class StreamHub implements StreamPublisher {
   broadcast(sessionId: string, payload: AgentPayload): void {
     const sockets = this.sessions.get(sessionId);
     const message = JSON.stringify(payload);
+    console.log(`[STREAM] Broadcasting to session ${sessionId}:`);
+    console.log(`  Type: ${payload.type}`);
+    console.log(`  Sockets: ${sockets?.size ?? 0}`);
+    
     if (sockets) {
       for (const socket of sockets) {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(message);
+          console.log(`  -> Sent to socket`);
+        } else {
+          console.log(`  -> Socket not open (state: ${socket.readyState})`);
         }
       }
+    } else {
+      console.log(`  -> No sockets connected for this session!`);
     }
+    
     if (this.livekit) {
-      void this.livekit.publish(sessionId, payload).catch((error) => {
-        console.warn("LiveKit publish failed:", error);
-      });
+      void this.livekit.publish(sessionId, payload);
     }
   }
 }

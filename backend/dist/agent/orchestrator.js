@@ -1,3 +1,5 @@
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { HumanMessage } from "@langchain/core/messages";
 const buildQuery = (seed) => {
     const parts = [
         ...(seed.visible_text ?? []),
@@ -9,13 +11,140 @@ const buildQuery = (seed) => {
         return "unknown product";
     return parts.join(" ");
 };
-const makeSummary = (product) => {
+const formatPrice = (price) => {
+    if (!price || Number.isNaN(price.amount))
+        return "Unknown";
+    return `$${price.amount.toFixed(2)}`;
+};
+const extractBrand = (title, seed) => {
+    if (seed?.brand_hint)
+        return seed.brand_hint;
+    const firstToken = title.split(" ")[0];
+    return firstToken || "Unknown";
+};
+const extractSite = (url, fallback) => {
+    if (!url)
+        return fallback ?? "Unknown";
+    try {
+        const host = new URL(url).hostname.replace(/^www\./, "");
+        return host || fallback || "Unknown";
+    }
+    catch {
+        return fallback ?? "Unknown";
+    }
+};
+const computeValueScore = (detected, competitors) => {
+    if (!Number.isFinite(detected) || competitors.length === 0)
+        return "hold";
+    const avg = competitors.reduce((sum, price) => sum + price, 0) / competitors.length;
+    if (detected <= avg * 0.98)
+        return "buy";
+    if (detected <= avg * 1.05)
+        return "hold";
+    return "avoid";
+};
+const makeShoppingSummary = (sessionId, threadId, product, alternatives, seed) => {
+    const detectedPrice = formatPrice(product.price);
+    const competitorPrices = alternatives.map((alt) => ({
+        site: extractSite(alt.source_url, alt.title),
+        price: formatPrice(alt.price),
+    }));
+    const numericCompetitors = alternatives
+        .map((alt) => alt.price.amount)
+        .filter((amount) => Number.isFinite(amount));
+    const valueScore = computeValueScore(product.price.amount, numericCompetitors);
+    const isCompatible = false;
+    const compatibilityNote = "Compatibility not assessed with current sources.";
+    const insightBase = competitorPrices.length > 0
+        ? `Compared ${competitorPrices.length} competitor prices; current price is ${detectedPrice}.`
+        : "Limited competitor pricing data available.";
+    const aiInsight = `${insightBase} Value score: ${valueScore}.`;
     return {
-        summary: `This looks like ${product.title}. Pricing starts around $${product.price.amount.toFixed(2)}.`,
-        pros: ["Quick lookup", "Visible source link"],
-        cons: ["Mock pricing", "Limited specs"],
-        best_for: ["Fast demos", "Prototype UX"],
+        type: "ShoppingSummary",
+        session_id: sessionId,
+        thread_id: threadId,
+        productName: product.title,
+        brand: extractBrand(product.title, seed),
+        detectedPrice,
+        competitors: competitorPrices,
+        isCompatible,
+        compatibilityNote,
+        valueScore,
+        aiInsight,
     };
+};
+const parseStructuredSummary = (raw, sessionId, threadId, fallback) => {
+    try {
+        const parsed = JSON.parse(raw);
+        const normalized = {
+            type: "ShoppingSummary",
+            session_id: sessionId,
+            thread_id: threadId,
+            productName: String(parsed.productName ?? fallback.productName),
+            brand: String(parsed.brand ?? fallback.brand),
+            detectedPrice: String(parsed.detectedPrice ?? fallback.detectedPrice),
+            competitors: Array.isArray(parsed.competitors)
+                ? parsed.competitors.map((item) => ({
+                    site: String(item?.site ?? "Unknown"),
+                    price: String(item?.price ?? "Unknown"),
+                }))
+                : fallback.competitors,
+            isCompatible: typeof parsed.isCompatible === "boolean"
+                ? parsed.isCompatible
+                : fallback.isCompatible,
+            compatibilityNote: String(parsed.compatibilityNote ?? fallback.compatibilityNote),
+            valueScore: parsed.valueScore === "buy" || parsed.valueScore === "hold" || parsed.valueScore === "avoid"
+                ? parsed.valueScore
+                : fallback.valueScore,
+            aiInsight: String(parsed.aiInsight ?? fallback.aiInsight),
+        };
+        return normalized;
+    }
+    catch {
+        return fallback;
+    }
+};
+const generateShoppingSummaryWithLLM = async (sessionId, threadId, product, alternatives, seed) => {
+    const fallback = makeShoppingSummary(sessionId, threadId, product, alternatives, seed);
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey)
+        return fallback;
+    const model = new ChatGoogleGenerativeAI({
+        model: process.env.GEMINI_MODEL || process.env.gemini_model || "gemini-1.5-flash",
+        temperature: 0.2,
+        apiKey,
+        maxRetries: 1,
+    });
+    const altLines = alternatives
+        .map((alt, index) => {
+        return `${index + 1}. ${alt.title} | ${alt.price.amount} ${alt.price.currency} | ${alt.source_url ?? "unknown"}`;
+    })
+        .join("\n");
+    const prompt = `You are preparing a structured shopping summary. Output ONLY valid JSON with these keys:
+productName, brand, detectedPrice, competitors, isCompatible, compatibilityNote, valueScore, aiInsight.
+
+Rules:
+- competitors is an array of objects: { "site": string, "price": string }
+- valueScore must be one of: "buy", "hold", "avoid"
+- detectedPrice must be a string like "$123.45"
+- If you are uncertain, keep fields conservative and say so in aiInsight.
+
+Product:
+Title: ${product.title}
+Price: ${product.price.amount} ${product.price.currency}
+Source: ${product.source_url}
+Brand hint: ${seed?.brand_hint ?? "none"}
+Category hint: ${seed?.category_hint ?? "none"}
+
+Alternatives:
+${altLines || "none"}
+
+Return ONLY JSON.`;
+    const response = await model.invoke([new HumanMessage(prompt)]);
+    const content = typeof response.content === "string"
+        ? response.content.trim()
+        : JSON.stringify(response.content);
+    return parseStructuredSummary(content, sessionId, threadId, fallback);
 };
 const toInfo = (sessionId, message, threadId) => ({
     type: "Info",
@@ -36,33 +165,27 @@ export class AgentOrchestrator {
         const query = buildQuery(event.search_seed);
         const thread = this.store.startNewThread(sessionId, query, event.search_seed);
         await this.emit(toInfo(sessionId, "Pickup detected. Starting research.", thread.thread_id));
-        const research = await this.runResearch(sessionId, thread.thread_id, query);
+        const research = await this.runResearch(sessionId, thread.thread_id, query, event.search_seed);
         await this.emit(research);
-        const summaryData = makeSummary(research.top_match);
-        const summary = {
-            type: "AISummary",
-            session_id: sessionId,
-            thread_id: thread.thread_id,
-            ...summaryData,
-        };
+        const summary = await generateShoppingSummaryWithLLM(sessionId, thread.thread_id, research.top_match, research.alternatives, event.search_seed);
         await this.emit(summary);
     }
     async handleQuestion(sessionId, question) {
         const thread = this.store.getActiveThread(sessionId);
         if (!thread) {
-            await this.emit(toInfo(sessionId, "No active product. Pick up an item first."));
+            const query = question.trim();
+            const newThread = this.store.startNewThread(sessionId, query, undefined);
+            await this.emit(toInfo(sessionId, "Starting research from your question.", newThread.thread_id));
+            const research = await this.runResearch(sessionId, newThread.thread_id, query, undefined);
+            await this.emit(research);
+            const summary = await generateShoppingSummaryWithLLM(sessionId, newThread.thread_id, research.top_match, research.alternatives, undefined);
+            await this.emit(summary);
             return;
         }
         const query = `${thread.query} ${question}`.trim();
-        const research = await this.runResearch(sessionId, thread.thread_id, query);
+        const research = await this.runResearch(sessionId, thread.thread_id, query, thread.search_seed);
         await this.emit(research);
-        const summaryData = makeSummary(research.top_match);
-        const summary = {
-            type: "AISummary",
-            session_id: sessionId,
-            thread_id: thread.thread_id,
-            ...summaryData,
-        };
+        const summary = await generateShoppingSummaryWithLLM(sessionId, thread.thread_id, research.top_match, research.alternatives, thread.search_seed);
         await this.emit(summary);
     }
     async handleEnd(sessionId) {
@@ -82,7 +205,7 @@ export class AgentOrchestrator {
         const result = await this.tools.buyItem(productId);
         await this.emit(toInfo(sessionId, result.message, thread.thread_id));
     }
-    async runResearch(sessionId, threadId, query) {
+    async runResearch(sessionId, threadId, query, searchSeed) {
         const searchResults = await this.tools.searchWeb(query);
         const top = searchResults[0];
         let product = null;
@@ -111,6 +234,7 @@ export class AgentOrchestrator {
                 price: { amount: 29.99, currency: "USD" },
                 image_url: "https://placehold.co/300x300",
                 reason,
+                source_url: result.url,
             };
         }));
         const payload = {

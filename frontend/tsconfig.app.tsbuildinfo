@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/CameraBackground.tsx","./src/components/ShoppingHUD.tsx","./src/components/VoiceControls.tsx","./src/hooks/useBackendWebSocket.ts","./src/hooks/useLiveKitVoice.ts","./src/hooks/useProductDetection.ts"],"version":"5.7.3"}

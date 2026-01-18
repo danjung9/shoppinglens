@@ -11,17 +11,43 @@ export type LiveKitConfig = {
 export class LiveKitPublisher {
   private client: RoomServiceClient;
   private topic?: string;
+  private activeRooms = new Set<string>();
 
   constructor(config: LiveKitConfig) {
     this.client = new RoomServiceClient(config.host, config.apiKey, config.apiSecret);
     this.topic = config.topic;
   }
 
+  // Mark a room as active (called when user joins voice)
+  markRoomActive(room: string): void {
+    this.activeRooms.add(room);
+    console.log(`[LIVEKIT] Room ${room} marked as active`);
+  }
+
+  // Mark a room as inactive
+  markRoomInactive(room: string): void {
+    this.activeRooms.delete(room);
+    console.log(`[LIVEKIT] Room ${room} marked as inactive`);
+  }
+
   async publish(room: string, payload: AgentPayload): Promise<void> {
-    const data = new TextEncoder().encode(JSON.stringify(payload));
-    await this.client.sendData(room, data, DataPacket_Kind.RELIABLE, {
-      topic: this.topic,
-    });
+    // Skip publishing if no one has joined voice chat for this room
+    if (!this.activeRooms.has(room)) {
+      return;
+    }
+    
+    try {
+      const data = new TextEncoder().encode(JSON.stringify(payload));
+      await this.client.sendData(room, data, DataPacket_Kind.RELIABLE, {
+        topic: this.topic,
+      });
+      console.log(`[LIVEKIT] Published ${payload.type} to room ${room}`);
+    } catch (error: any) {
+      // Only log if it's not a "room doesn't exist" error
+      if (error?.code !== 'not_found') {
+        console.warn(`[LIVEKIT] Publish error:`, error.message);
+      }
+    }
   }
 }
 
