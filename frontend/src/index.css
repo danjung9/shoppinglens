@@ -17,6 +17,7 @@ body {
   background-color: #000;
 }
 
+<<<<<<< HEAD
 /* Custom scan animation */
 @keyframes scan {
   0% {
@@ -74,6 +75,8 @@ body {
   animation: shimmer 1.5s infinite;
 }
 
+=======
+>>>>>>> origin/srinivas/final
 /* Auto-scrolling marquee effect with 5s pause at end */
 @keyframes scroll-up {
   0% {

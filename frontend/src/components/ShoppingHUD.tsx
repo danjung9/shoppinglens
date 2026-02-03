@@ -19,6 +19,7 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
     return (
       <div 
         className="absolute right-6 top-6 z-10 w-1/3 max-w-sm rounded-xl text-white border border-white/20 transition-all duration-500 isolate glass-fade overflow-hidden"
+<<<<<<< HEAD
         style={{ padding: '7px' }}
       >
         <div className="space-y-4">
@@ -29,6 +30,16 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
             <div className="h-10 rounded-xl bg-white/10 loading-shimmer" />
             <div className="h-10 rounded-xl bg-white/10 loading-shimmer" />
           </div>
+=======
+        style={{ padding: '12px' }}
+      >
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="relative mb-4">
+            <div className="h-12 w-12 rounded-full border-2 border-blue-400/30 border-t-blue-400 animate-spin" />
+          </div>
+          <p className="text-base font-medium text-white">Searching prices...</p>
+          <p className="mt-1 text-xs text-white/60">Analyzing product and comparing deals</p>
+>>>>>>> origin/srinivas/final
         </div>
       </div>
     );
@@ -49,6 +60,7 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
     );
   }
 
+<<<<<<< HEAD
   const lowestCompetitorPrice = Math.min(
     ...data.competitors.map((c) => parseFloat(c.price.replace('$', '')))
   );
@@ -58,12 +70,28 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
   const ContentBlock = () => (
     <div style={{ padding: '7px' }}>
       {/* Product Identity */}
+=======
+  const competitorPrices = data.competitors
+    .map((c) => parseFloat(c.price.replace(/[^0-9.]/g, '')))
+    .filter((p) => !isNaN(p) && p > 0);
+  const lowestCompetitorPrice = competitorPrices.length > 0 ? Math.min(...competitorPrices) : 0;
+  const detectedPriceNum = parseFloat(data.detectedPrice.replace(/[^0-9.]/g, '')) || 0;
+  const savings = lowestCompetitorPrice > 0 && detectedPriceNum > lowestCompetitorPrice 
+    ? detectedPriceNum - lowestCompetitorPrice 
+    : 0;
+
+  const ContentBlock = () => (
+    <div style={{ padding: '7px' }}>
+>>>>>>> origin/srinivas/final
       <div className="mb-5">
         <h2 className="text-lg font-bold text-white truncate">{data.productName}</h2>
         <p className="text-sm text-white mt-1 truncate">{data.brand}</p>
       </div>
 
+<<<<<<< HEAD
       {/* Detected Price */}
+=======
+>>>>>>> origin/srinivas/final
       <div className="mb-5 rounded-2xl bg-white/5 border border-white/10 overflow-hidden" style={{ padding: '12px' }}>
         <div className="flex items-center justify-between">
           <span className="text-sm text-white">Detected Price</span>
@@ -71,7 +99,10 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
         </div>
       </div>
 
+<<<<<<< HEAD
       {/* Price Comparison */}
+=======
+>>>>>>> origin/srinivas/final
       <div className="mb-5">
         <h3 className="mb-3 text-sm font-medium text-white uppercase tracking-wider">
           Price Comparison
@@ -101,11 +132,15 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+<<<<<<< HEAD
                   <span
                     className={`font-semibold text-sm ${
                       isLower ? 'text-green-400' : 'text-white'
                     }`}
                   >
+=======
+                  <span className={`font-semibold text-sm ${isLower ? 'text-green-400' : 'text-white'}`}>
+>>>>>>> origin/srinivas/final
                     {competitor.price}
                   </span>
                   {isLower ? (
@@ -126,7 +161,10 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
         )}
       </div>
 
+<<<<<<< HEAD
       {/* Compatibility Check */}
+=======
+>>>>>>> origin/srinivas/final
       <div className="mb-5 rounded-2xl bg-white/5 border border-white/10 overflow-hidden" style={{ padding: '12px' }}>
         <div className="flex items-start gap-3">
           {data.isCompatible ? (
@@ -135,11 +173,15 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
             <XCircle className="h-4 w-4 flex-shrink-0 text-red-400 mt-0.5" />
           )}
           <div className="min-w-0">
+<<<<<<< HEAD
             <p
               className={`font-medium text-sm ${
                 data.isCompatible ? 'text-green-400' : 'text-red-400'
               }`}
             >
+=======
+            <p className={`font-medium text-sm ${data.isCompatible ? 'text-green-400' : 'text-red-400'}`}>
+>>>>>>> origin/srinivas/final
               {data.isCompatible ? 'Compatible' : 'Incompatible'}
             </p>
             <p className="mt-1 text-xs text-white leading-relaxed">{data.compatibilityNote}</p>
@@ -147,7 +189,10 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
         </div>
       </div>
 
+<<<<<<< HEAD
       {/* Value Score */}
+=======
+>>>>>>> origin/srinivas/final
       <div className="mb-5">
         <div
           className={`rounded-2xl text-center overflow-hidden ${
@@ -158,17 +203,24 @@ export function ShoppingHUD({ data, isLoading }: ShoppingHUDProps) {
           style={{ padding: '12px' }}
         >
           <p className="text-xs font-medium text-white mb-1">AI Recommendation</p>
+<<<<<<< HEAD
           <p
             className={`text-lg font-bold ${
               data.valueScore === 'buy' ? 'text-green-400' : 'text-yellow-400'
             }`}
           >
+=======
+          <p className={`text-lg font-bold ${data.valueScore === 'buy' ? 'text-green-400' : 'text-yellow-400'}`}>
+>>>>>>> origin/srinivas/final
             {data.valueScore === 'buy' ? '✓ Buy Now' : '⏳ Wait'}
           </p>
         </div>
       </div>
 
+<<<<<<< HEAD
       {/* AI Insight */}
+=======
+>>>>>>> origin/srinivas/final
       <div className="mb-5 rounded-2xl bg-blue-400/10 border border-blue-400/20 overflow-hidden" style={{ padding: '12px' }}>
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-3 w-3 text-blue-400 flex-shrink-0" />

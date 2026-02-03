@@ -1,0 +1,23 @@
+{
+  "name": "shoppinglens-livekit-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx agent.ts dev",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/agent.js start"
+  },
+  "dependencies": {
+    "@livekit/agents": "1.0.36",
+    "@livekit/agents-plugin-google": "1.0.36",
+    "@livekit/agents-plugin-livekit": "1.0.36",
+    "@livekit/agents-plugin-silero": "1.0.36",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.5"
+  }
+}
