@@ -5,6 +5,7 @@ import {
   cli,
   defineAgent,
   inference,
+  llm,
   metrics,
   voice,
 } from "@livekit/agents";
@@ -12,7 +13,9 @@ import * as livekit from "@livekit/agents-plugin-livekit";
 import * as silero from "@livekit/agents-plugin-silero";
 import { BackgroundVoiceCancellation } from "@livekit/noise-cancellation-node";
 import { ParticipantKind, RoomEvent } from "@livekit/rtc-node";
+import { z } from "zod";
 import type { SearchSeed } from "../types.js";
+import { searchWeb } from "../tools/webSearch.js";
 
 dotenv.config();
 
@@ -26,7 +29,9 @@ const DEFAULT_TTS_MODEL = "cartesia/sonic-3:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc
 const DEFAULT_INSTRUCTIONS =
   "You are ShoppingLens, a concise in-room voice assistant for shoppers. " +
   "Ask short clarifying questions when details are missing (brand, size, variant, price range). " +
-  "Keep answers direct and helpful.";
+  "Keep answers direct and helpful. " +
+  "Use the search_web tool for up-to-date product details when needed. " +
+  "When the user says 'buy now' or asks to purchase, call buy_now and repeat its message exactly.";
 
 const sttModel = process.env.LIVEKIT_AGENT_STT_MODEL ?? DEFAULT_STT_MODEL;
 const llmModel = process.env.LIVEKIT_AGENT_LLM_MODEL ?? DEFAULT_LLM_MODEL;
@@ -125,7 +130,52 @@ const buildTts = () => {
 
 class ShoppingLensAgent extends voice.Agent {
   constructor(customInstructions: string) {
-    super({ instructions: customInstructions });
+    super({
+      instructions: customInstructions,
+      tools: {
+        search_web: llm.tool({
+          description:
+            "Search the public web for product details, pricing, and availability. Returns top results with titles, URLs, and snippets.",
+          parameters: z.object({
+            query: z
+              .string()
+              .min(2)
+              .describe("Search query with brand, product name, and key details."),
+            limit: z
+              .number()
+              .int()
+              .min(1)
+              .max(8)
+              .optional()
+              .describe("Maximum number of results to return (1-8)."),
+          }),
+          execute: async ({ query, limit }) => {
+            if (!query.trim()) {
+              throw new llm.ToolError("search_web requires a non-empty query.");
+            }
+            try {
+              const results = await searchWeb(query, limit ? { limit } : undefined);
+              return { query: query.trim(), results };
+            } catch (error) {
+              const message = error instanceof Error ? error.message : "Search failed.";
+              throw new llm.ToolError(message);
+            }
+          },
+        }),
+        buy_now: llm.tool({
+          description: "Confirm a purchase and provide a demo order number.",
+          parameters: z.object({
+            productId: z
+              .string()
+              .optional()
+              .describe("Optional product identifier to associate with the purchase."),
+          }),
+          execute: async () => {
+            return "Item bought order number #123456";
+          },
+        }),
+      },
+    });
   }
 }
 

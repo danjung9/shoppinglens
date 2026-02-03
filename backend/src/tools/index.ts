@@ -1,4 +1,5 @@
 import { ExtractedProduct, Price, ProductSpec, SearchResult } from "../types.js";
+import { searchWeb as searchWebFree } from "./webSearch.js";
 
 export type Toolset = {
   searchWeb: (query: string) => Promise<SearchResult[]>;
@@ -10,35 +11,44 @@ export type Toolset = {
 
 const makePrice = (amount: number): Price => ({ amount, currency: "USD" });
 
+const DEFAULT_PAGE_TIMEOUT_MS = 8000;
+const pageTimeoutMs = Number.parseInt(process.env.PAGE_FETCH_TIMEOUT_MS ?? "", 10);
+const pageFetchTimeoutMs =
+  Number.isFinite(pageTimeoutMs) && pageTimeoutMs > 0 ? pageTimeoutMs : DEFAULT_PAGE_TIMEOUT_MS;
+const userAgent = process.env.SEARCH_USER_AGENT ?? "ShoppingLensBot/0.1 (+https://shoppinglens.local)";
+
+const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), pageFetchTimeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const makeSpecs = (query: string): ProductSpec[] => [
   { key: "Material", value: "Unknown" },
   { key: "Query", value: query },
 ];
 
-export const createStubTools = (): Toolset => {
+export const createTools = (): Toolset => {
   return {
     async searchWeb(query: string) {
-      return [
-        {
-          title: `Top result for ${query}`,
-          url: `https://example.com/products/${encodeURIComponent(query)}`,
-          snippet: "Mock search result for hackathon wiring.",
-        },
-        {
-          title: `Alternative ${query} bundle`,
-          url: `https://example.com/alt/${encodeURIComponent(query)}`,
-          snippet: "Mock alternative listing.",
-        },
-        {
-          title: `Comparable ${query} choice`,
-          url: `https://example.com/compare/${encodeURIComponent(query)}`,
-          snippet: "Mock comparison page.",
-        },
-      ];
+      return searchWebFree(query);
     },
 
     async fetchPage(url: string) {
-      return `<!doctype html><html><head><title>${url}</title></head><body>Mock page for ${url}</body></html>`;
+      const response = await fetchWithTimeout(url, {
+        headers: {
+          "User-Agent": userAgent,
+          Accept: "text/html",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${url} (${response.status})`);
+      }
+      return response.text();
     },
 
     async extractProductFields(_html: string, sourceUrl: string) {
@@ -64,3 +74,5 @@ export const createStubTools = (): Toolset => {
     },
   };
 };
+
+export const createStubTools = createTools;
